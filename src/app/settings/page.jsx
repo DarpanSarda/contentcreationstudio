@@ -686,15 +686,15 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-dark-bg">
       {/* Header */}
-      <header className="sticky top-16 z-40 glass border-b border-white/10">
+      {/* Page Header */}
+      <div className="bg-dark-bg border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-text-light">Settings</h1>
-            </div>
+          <div className="py-6">
+            <h1 className="text-3xl font-bold text-text-light">Settings</h1>
+            <p className="text-text-muted mt-1">Manage your account settings and preferences</p>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Success Message */}

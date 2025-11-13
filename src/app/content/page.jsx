@@ -418,29 +418,26 @@ export default function ContentLibraryPage() {
 
   return (
     <div className="min-h-screen bg-dark-bg">
-      {/* Header */}
-      <header className="sticky top-16 z-40 glass border-b border-white/10">
+      {/* Page Header */}
+      <div className="bg-dark-bg border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-text-light">Content Library</h1>
-              <span className="text-sm text-text-muted">
-                {sortedContent.length} item{sortedContent.length !== 1 ? 's' : ''}
-              </span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-6">
+            <div>
+              <h1 className="text-3xl font-bold text-text-light">Content Library</h1>
+              <p className="text-text-muted mt-1">
+                {sortedContent.length} item{sortedContent.length !== 1 ? 's' : ''} total
+              </p>
             </div>
-
-            <div className="flex items-center gap-4">
-              <Link
-                href="/content/new"
-                className="flex items-center gap-2 px-4 py-2 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105"
-              >
-                <Plus className="w-4 h-4" />
-                New Content
-              </Link>
-            </div>
+            <Link
+              href="/content/new"
+              className="flex items-center gap-2 px-4 py-2 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105 w-fit"
+            >
+              <Plus className="w-4 h-4" />
+              New Content
+            </Link>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filters */}

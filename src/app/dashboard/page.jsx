@@ -13,12 +13,7 @@ import {
   Plus,
   Eye,
   Edit,
-  MoreVertical,
-  Search,
-  Filter,
-  Bell,
-  Settings,
-  LogOut
+  MoreVertical
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -89,7 +84,6 @@ export default function DashboardPage() {
     { name: 'Medium', status: 'connected', lastSync: '3 hours ago' }
   ]);
 
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
 
   const getStatusColor = (status) => {
@@ -120,65 +114,16 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-bg">
-      {/* Dashboard Header */}
-      <header className="sticky top-16 z-40 glass border-b border-white/10">
+    <>
+      {/* Page Header */}
+      <div className="bg-dark-bg border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div>
-              <h1 className="text-2xl font-bold text-text-light">Dashboard</h1>
-              <p className="text-sm text-text-muted">Welcome back, {userProfile.name}</p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Search */}
-              <div className="hidden md:flex items-center gap-2 bg-card-bg/20 border border-white/20 rounded-lg px-3 py-2">
-                <Search className="w-4 h-4 text-text-muted" />
-                <input
-                  type="text"
-                  placeholder="Quick search..."
-                  className="bg-transparent text-text-light placeholder-text-muted text-sm outline-none w-48"
-                />
-              </div>
-
-              {/* Notifications */}
-              <button className="relative p-2 rounded-lg hover:bg-card-bg/20 transition-colors">
-                <Bell className="w-5 h-5 text-text-light" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-accent-orange rounded-full"></span>
-              </button>
-
-              {/* User Menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-card-bg/20 transition-colors"
-                >
-                  <div className="w-8 h-8 bg-gradient-to-br from-accent-orange to-accent-yellow rounded-full flex items-center justify-center text-sm font-bold text-white">
-                    {userProfile.avatar}
-                  </div>
-                  <MoreVertical className="w-4 h-4 text-text-light" />
-                </button>
-
-                {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 glass border border-white/10 rounded-lg py-2 shadow-xl">
-                    <Link
-                      href="/settings"
-                      className="flex items-center gap-3 px-4 py-2 text-text-light hover:bg-card-bg/20 transition-colors"
-                    >
-                      <Settings className="w-4 h-4" />
-                      Settings
-                    </Link>
-                    <button className="flex items-center gap-3 px-4 py-2 text-text-light hover:bg-card-bg/20 transition-colors w-full text-left">
-                      <LogOut className="w-4 h-4" />
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="py-6">
+            <h1 className="text-3xl font-bold text-text-light">Dashboard</h1>
+            <p className="text-text-muted mt-1">Welcome back, {userProfile.name}</p>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Quick Stats */}
@@ -399,6 +344,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
-    </div>
+    </>
   );
 }

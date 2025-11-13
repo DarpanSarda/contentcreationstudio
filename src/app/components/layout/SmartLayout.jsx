@@ -9,40 +9,39 @@ import AppNavigation from '@/app/components/layout/AppNavigation';
 export default function SmartLayout({ children }) {
   const pathname = usePathname();
 
-  // Routes that should NOT show landing navigation/footer
-  const specialRoutes = [
-    '/login',
-    '/register',
-    '/reset-password',
-    '/dashboard',
-    '/content',
-    '/research',
-    '/publishing',
-    '/analytics',
-    '/agents',
-    '/settings'
-  ];
-
-  const isSpecialRoute = specialRoutes.includes(pathname) ||
-    specialRoutes.some(route => pathname.startsWith(route + '/'));
-
+  // Auth pages - no navigation
   const isAuthPage = ['/login', '/register', '/reset-password'].includes(pathname);
+
+  // Authenticated app pages - app navigation only
+  const isAppPage = ['/dashboard', '/content', '/research', '/publishing', '/analytics', '/agents', '/settings', '/help', '/support', '/about']
+    .some(route => pathname.startsWith(route));
+
+  // Landing page - landing navigation + footer
+  const isLandingPage = pathname === '/';
 
   return (
     <>
-      {/* Landing page navigation and footer */}
-      {!isSpecialRoute && (
+      {/* Auth pages - no navigation */}
+      {isAuthPage && children}
+
+      {/* Authenticated app pages */}
+      {isAppPage && (
         <>
-          <Navigation />
-          <Footer />
+          <AppNavigation />
+          <div className="pt-16">
+            {children}
+          </div>
         </>
       )}
 
-      {/* Authenticated app navigation */}
-      {isSpecialRoute && !isAuthPage && <AppNavigation />}
-
-      {/* Page content */}
-      {children}
+      {/* Landing page */}
+      {isLandingPage && (
+        <>
+          <Navigation />
+          {children}
+          <Footer />
+        </>
+      )}
     </>
   );
 }
