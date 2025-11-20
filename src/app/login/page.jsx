@@ -2,10 +2,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { AuthUtils } from '../../lib/authUtils';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -20,7 +25,7 @@ export default function LoginPage() {
 
     if (!formData.email) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!AuthUtils.validateEmail(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
@@ -42,18 +47,19 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Sanitize input
+      const sanitizedEmail = AuthUtils.sanitizeInput(formData.email);
+      const sanitizedPassword = formData.password; // Don't sanitize password
 
-      // TODO: Implement actual login logic
-      console.log('Login attempt:', formData);
+      // Call AuthContext login method (includes toast notifications)
+      await login(sanitizedEmail, sanitizedPassword);
 
-      // Redirect to dashboard on success
-      // router.push('/');
-
+      // Redirect to dashboard on successful login
+      router.push('/dashboard');
     } catch (error) {
+      // Error handling is now done by AuthContext with toast notifications
+      // No need for additional error handling here
       console.error('Login error:', error);
-      // TODO: Show error message
     } finally {
       setIsLoading(false);
     }

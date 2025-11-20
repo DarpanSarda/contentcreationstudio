@@ -1,7 +1,10 @@
 // app/settings/page.jsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 import {
   User,
   Bell,
@@ -25,21 +28,51 @@ import {
   ChevronRight,
   Upload,
   Link2,
-  Clock
+  Clock,
+  Camera
 } from 'lucide-react';
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [showPassword, setShowPassword] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [imagePreview, setImagePreview] = useState(null);
 
-  // Profile State
-  const [profile, setProfile] = useState({
-    name: 'Sarah Johnson',
-    email: 'sarah@example.com',
-    timezone: 'America/New_York',
-    profilePicture: null
+  // Profile State - Real data from API
+  const [profileData, setProfileData] = useState({
+    full_name: '',
+    email: '',
+    phone_number: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    country: '',
+    postal_code: '',
+    profile_picture_url: '',
+    bio: '',
+    date_of_birth: ''
+  });
+
+  // User data from JWT
+  const [userData, setUserData] = useState({
+    username: '',
+    email: '',
+    created_at: ''
+  });
+
+  // Password change state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   });
 
   // Platform Connections State
@@ -123,6 +156,35 @@ export default function SettingsPage() {
     paymentMethod: 'Visa ending in 4242'
   });
 
+  // Fetch profile data on component mount
+  useEffect(() => {
+    fetchProfileData();
+  }, []);
+
+  const fetchProfileData = async () => {
+    setIsLoadingProfile(true);
+    try {
+      const response = await apiClient.getUserProfile();
+      console.log('Profile response:', response);
+
+      if (response.profile) {
+        setProfileData(response.profile);
+        if (response.profile.profile_picture_url) {
+          setImagePreview(response.profile.profile_picture_url);
+        }
+      }
+
+      if (response.user) {
+        setUserData(response.user);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+      toast.error('Failed to load profile data');
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
   const tabs = [
     { id: 'profile', name: 'Profile', icon: User },
     { id: 'platforms', name: 'Platform Connections', icon: Link2 },
@@ -133,17 +195,84 @@ export default function SettingsPage() {
     { id: 'billing', name: 'Billing', icon: CreditCard }
   ];
 
-  const handleSave = async (section) => {
+  const handleProfileUpdate = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSuccessMessage(`${section} settings saved successfully!`);
-      setTimeout(() => setSuccessMessage(''), 3000);
+      // Filter out null/undefined values
+      const updateData = Object.entries(profileData).reduce((acc, [key, value]) => {
+        if (value !== null && value !== undefined && value !== '') {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      await apiClient.updateUserProfile(updateData);
+      await fetchProfileData(); // Refresh profile data
     } catch (error) {
-      console.error('Save error:', error);
+      console.error('Profile update error:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await apiClient.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error) {
+      console.error('Password change error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+
+      // Generate filename
+      const fileName = `profile_${user?.id || Date.now()}_${file.name}`;
+      const publicPath = `/uploads/profiles/${fileName}`;
+
+      // In a real app, you would upload to server here
+      // For now, just update the profile with the local path
+      setProfileData(prev => ({ ...prev, profile_picture_url: publicPath }));
+
+      toast.success('Profile picture updated! Don\'t forget to save changes.');
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast.error('Failed to upload image');
     }
   };
 
@@ -190,123 +319,308 @@ export default function SettingsPage() {
     }
   };
 
-  const ProfileTab = () => (
-    <div className="space-y-6">
-      <div className="glass rounded-xl border border-white/10 p-6">
-        <h3 className="text-lg font-bold text-text-light mb-6">Personal Information</h3>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-text-light mb-2">Full Name</label>
-            <input
-              type="text"
-              value={profile.name}
-              onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
-            />
+  const ProfileTab = () => {
+    if (isLoadingProfile) {
+      return (
+        <div className="glass rounded-xl border border-white/10 p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-4 border-accent-orange border-t-transparent rounded-full animate-spin"></div>
+            <span className="ml-3 text-text-muted">Loading profile...</span>
           </div>
+        </div>
+      );
+    }
 
-          <div>
-            <label className="block text-sm font-medium text-text-light mb-2">Email Address</label>
-            <input
-              type="email"
-              value={profile.email}
-              onChange={(e) => setProfile(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
-            />
-          </div>
+    return (
+      <div className="space-y-6">
+        {/* Account Information */}
+        <div className="glass rounded-xl border border-white/10 p-6">
+          <h3 className="text-lg font-bold text-text-light mb-2">Account Information</h3>
+          <p className="text-sm text-text-muted mb-6">Your account details (read-only)</p>
 
-          <div>
-            <label className="block text-sm font-medium text-text-light mb-2">Timezone</label>
-            <select
-              value={profile.timezone}
-              onChange={(e) => setProfile(prev => ({ ...prev, timezone: e.target.value }))}
-              className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
-            >
-              <option value="America/New_York">Eastern Time (ET)</option>
-              <option value="America/Chicago">Central Time (CT)</option>
-              <option value="America/Denver">Mountain Time (MT)</option>
-              <option value="America/Los_Angeles">Pacific Time (PT)</option>
-              <option value="Europe/London">London (GMT)</option>
-              <option value="Europe/Paris">Paris (CET)</option>
-              <option value="Asia/Tokyo">Tokyo (JST)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-light mb-2">Profile Picture</label>
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-accent-orange to-accent-yellow rounded-full flex items-center justify-center text-2xl font-bold text-white">
-                {profile.name.charAt(0)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-muted mb-2">Username</label>
+              <div className="px-4 py-3 bg-card-bg/10 border border-white/10 rounded-lg text-text-light">
+                {userData.username || 'Not set'}
               </div>
-              <button className="px-4 py-2 border border-white/20 rounded-lg hover:bg-card-bg/20 transition-colors text-text-light">
-                <Upload className="w-4 h-4 inline mr-2" />
-                Upload Picture
-              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-muted mb-2">Email</label>
+              <div className="px-4 py-3 bg-card-bg/10 border border-white/10 rounded-lg text-text-light">
+                {userData.email}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end mt-6">
-          <button
-            onClick={() => handleSave('Profile')}
-            disabled={isLoading}
-            className="px-6 py-3 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
+        {/* Personal Information */}
+        <div className="glass rounded-xl border border-white/10 p-6">
+          <h3 className="text-lg font-bold text-text-light mb-2">Personal Information</h3>
+          <p className="text-sm text-text-muted mb-6">Update your profile details</p>
 
-      <div className="glass rounded-xl border border-white/10 p-6">
-        <h3 className="text-lg font-bold text-text-light mb-6">Password</h3>
+          <div className="space-y-4">
+            {/* Profile Picture */}
+            <div>
+              <label className="block text-sm font-medium text-text-light mb-3">Profile Picture</label>
+              <div className="flex items-center gap-6">
+                <div className="relative group">
+                  {imagePreview ? (
+                    <img
+                      src={imagePreview}
+                      alt="Profile"
+                      className="w-24 h-24 rounded-full object-cover border-2 border-white/20"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 bg-gradient-to-br from-accent-orange to-accent-yellow rounded-full flex items-center justify-center text-3xl font-bold text-white">
+                      {(profileData.full_name || userData.username || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-text-light mb-2">Current Password</label>
-            <input
-              type="password"
-              className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
-            />
-          </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    id="profile-picture"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="profile-picture"
+                    className="inline-flex items-center px-4 py-2 border border-white/20 rounded-lg hover:bg-card-bg/20 transition-colors text-text-light cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Picture
+                  </label>
+                  <p className="text-xs text-text-muted mt-2">JPG, PNG or GIF. Max size 5MB</p>
+                </div>
+              </div>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-light mb-2">New Password</label>
-            <div className="relative">
+            {/* Full Name */}
+            <div>
+              <label className="block text-sm font-medium text-text-light mb-2">Full Name</label>
               <input
-                type={showPassword ? 'text' : 'password'}
-                className="w-full px-4 py-3 pr-12 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
+                type="text"
+                value={profileData.full_name || ''}
+                onChange={(e) => setProfileData(prev => ({ ...prev, full_name: e.target.value }))}
+                placeholder="Enter your full name"
+                className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
               />
-              <button
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-light"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label className="block text-sm font-medium text-text-light mb-2">Phone Number</label>
+              <input
+                type="tel"
+                value={profileData.phone_number || ''}
+                onChange={(e) => setProfileData(prev => ({ ...prev, phone_number: e.target.value }))}
+                placeholder="+1 (555) 000-0000"
+                className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
+              />
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-sm font-medium text-text-light mb-2">Date of Birth</label>
+              <input
+                type="date"
+                value={profileData.date_of_birth || ''}
+                onChange={(e) => setProfileData(prev => ({ ...prev, date_of_birth: e.target.value }))}
+                className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
+              />
+            </div>
+
+            {/* Bio */}
+            <div>
+              <label className="block text-sm font-medium text-text-light mb-2">Bio</label>
+              <textarea
+                value={profileData.bio || ''}
+                onChange={(e) => setProfileData(prev => ({ ...prev, bio: e.target.value }))}
+                placeholder="Tell us about yourself..."
+                rows={4}
+                className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all resize-none"
+              />
+            </div>
+
+            {/* Address Section */}
+            <div className="pt-4 border-t border-white/10">
+              <h4 className="text-md font-semibold text-text-light mb-4">Address</h4>
+
+              <div className="grid grid-cols-1 gap-4">
+                <input
+                  type="text"
+                  value={profileData.address_line1 || ''}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, address_line1: e.target.value }))}
+                  placeholder="Address Line 1"
+                  className="px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
+                />
+
+                <input
+                  type="text"
+                  value={profileData.address_line2 || ''}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, address_line2: e.target.value }))}
+                  placeholder="Address Line 2 (Optional)"
+                  className="px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    value={profileData.city || ''}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, city: e.target.value }))}
+                    placeholder="City"
+                    className="px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
+                  />
+
+                  <input
+                    type="text"
+                    value={profileData.state || ''}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, state: e.target.value }))}
+                    placeholder="State/Province"
+                    className="px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    value={profileData.country || ''}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, country: e.target.value }))}
+                    placeholder="Country"
+                    className="px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
+                  />
+
+                  <input
+                    type="text"
+                    value={profileData.postal_code || ''}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, postal_code: e.target.value }))}
+                    placeholder="Postal Code"
+                    className="px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-light mb-2">Confirm New Password</label>
-            <input
-              type="password"
-              className="w-full px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
-            />
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={handleProfileUpdate}
+              disabled={isLoading}
+              className="px-6 py-3 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Changes
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="flex justify-end mt-6">
-          <button
-            onClick={() => handleSave('Password')}
-            disabled={isLoading}
-            className="px-6 py-3 bg-accent-cyan hover:bg-opacity-90 text-dark-bg rounded-lg font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Updating...' : 'Update Password'}
-          </button>
+        {/* Password Change */}
+        <div className="glass rounded-xl border border-white/10 p-6">
+          <h3 className="text-lg font-bold text-text-light mb-2">Change Password</h3>
+          <p className="text-sm text-text-muted mb-6">Update your password to keep your account secure</p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-light mb-2">Current Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword.current ? 'text' : 'password'}
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  className="w-full px-4 py-3 pr-12 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
+                  placeholder="Enter current password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => ({ ...prev, current: !prev.current }))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-light"
+                >
+                  {showPassword.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-light mb-2">New Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword.new ? 'text' : 'password'}
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  className="w-full px-4 py-3 pr-12 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
+                  placeholder="Enter new password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => ({ ...prev, new: !prev.new }))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-light"
+                >
+                  {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-text-muted mt-1">Must be at least 8 characters</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-light mb-2">Confirm New Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword.confirm ? 'text' : 'password'}
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="w-full px-4 py-3 pr-12 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
+                  placeholder="Confirm new password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => ({ ...prev, confirm: !prev.confirm }))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-light"
+                >
+                  {showPassword.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={handlePasswordChange}
+              disabled={isLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+              className="px-6 py-3 bg-accent-cyan hover:bg-opacity-90 text-dark-bg rounded-lg font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-dark-bg border-t-transparent rounded-full animate-spin"></div>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Key className="w-4 h-4" />
+                  Update Password
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const PlatformsTab = () => (
     <div className="space-y-6">
@@ -697,16 +1011,6 @@ export default function SettingsPage() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Success Message */}
-        {successMessage && (
-          <div className="mb-6 glass rounded-xl border border-accent-green/30 bg-accent-green/10 p-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-accent-green" />
-              <p className="text-accent-green font-medium">{successMessage}</p>
-            </div>
-          </div>
-        )}
-
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <div className="lg:w-64">

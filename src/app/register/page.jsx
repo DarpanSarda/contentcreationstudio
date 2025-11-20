@@ -2,10 +2,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock, User, CheckCircle, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { AuthUtils } from '../../lib/authUtils';
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -30,16 +35,17 @@ export default function RegisterPage() {
 
     if (!formData.email) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!AuthUtils.validateEmail(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    } else if (!/(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/.test(formData.password)) {
-      newErrors.password = 'Password must include at least one number, one uppercase letter, one lowercase letter, and one special character';
+    } else {
+      const passwordValidation = AuthUtils.validatePassword(formData.password);
+      if (!passwordValidation.isValid) {
+        newErrors.password = passwordValidation.feedback[0] || 'Password does not meet requirements';
+      }
     }
 
     if (!formData.confirmPassword) {
@@ -57,13 +63,9 @@ export default function RegisterPage() {
   };
 
   const calculatePasswordStrength = (password) => {
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (password.length >= 12) strength++;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-    if (/\d/.test(password)) strength++;
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
-    return strength;
+    const validation = AuthUtils.validatePassword(password);
+    setPasswordStrength(validation.score);
+    return validation;
   };
 
   const handleSubmit = async (e) => {
@@ -76,18 +78,23 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Sanitize input
+      const sanitizedEmail = AuthUtils.sanitizeInput(formData.email);
+      const sanitizedFullName = AuthUtils.sanitizeInput(formData.fullName);
+      const password = formData.password; // Don't sanitize password
 
-      // TODO: Implement actual registration logic
-      console.log('Registration attempt:', formData);
+      // Generate username from full name (or use email prefix)
+      const username = sanitizedFullName.toLowerCase().replace(/\s+/g, '-') || sanitizedEmail.split('@')[0];
 
-      // Redirect to onboarding or dashboard
-      // router.push('/');
+      // Call AuthContext register method (includes toast notifications)
+      await register(sanitizedEmail, password, username);
 
+      // Redirect to dashboard on successful registration
+      router.push('/dashboard');
     } catch (error) {
+      // Error handling is now done by AuthContext with toast notifications
+      // No need for additional error handling here
       console.error('Registration error:', error);
-      // TODO: Show error message
     } finally {
       setIsLoading(false);
     }
@@ -112,16 +119,11 @@ export default function RegisterPage() {
   };
 
   const getPasswordStrengthText = () => {
-    if (passwordStrength === 0) return '';
-    if (passwordStrength <= 2) return 'Weak';
-    if (passwordStrength <= 3) return 'Fair';
-    return 'Strong';
+    return AuthUtils.getPasswordStrengthText({ score: passwordStrength });
   };
 
   const getPasswordStrengthColor = () => {
-    if (passwordStrength <= 2) return 'bg-red-500';
-    if (passwordStrength <= 3) return 'bg-yellow-500';
-    return 'bg-green-500';
+    return AuthUtils.getPasswordStrengthBgColor({ score: passwordStrength });
   };
 
   return (
@@ -250,13 +252,13 @@ export default function RegisterPage() {
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-text-muted">
-                      Password strength: <span className={`font-medium ${passwordStrength <= 2 ? 'text-red-500' : passwordStrength <= 3 ? 'text-yellow-500' : 'text-green-500'}`}>{getPasswordStrengthText()}</span>
+                      Password strength: <span className={`font-medium ${AuthUtils.getPasswordStrengthColor({ score: passwordStrength })}`}>{getPasswordStrengthText()}</span>
                     </span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-1.5">
                     <div
                       className={`h-1.5 rounded-full transition-all ${getPasswordStrengthColor()}`}
-                      style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                      style={{ width: `${(passwordStrength / 100) * 100}%` }}
                     />
                   </div>
                 </div>

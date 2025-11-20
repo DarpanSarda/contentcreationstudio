@@ -2,10 +2,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import apiClient from '../../lib/api';
+import { AuthUtils } from '../../lib/authUtils';
 
 export default function ResetPasswordPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
@@ -16,7 +20,7 @@ export default function ResetPasswordPage() {
 
     if (!email) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!AuthUtils.validateEmail(email)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
@@ -34,17 +38,17 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Sanitize input
+      const sanitizedEmail = AuthUtils.sanitizeInput(email);
 
-      // TODO: Implement actual password reset logic
-      console.log('Password reset request for:', email);
+      // Call API password reset request endpoint (includes toast notifications)
+      const response = await apiClient.requestPasswordReset(sanitizedEmail);
 
       setIsSubmitted(true);
-
     } catch (error) {
+      // Error handling is now done by API client with toast notifications
+      // No need for additional error handling here
       console.error('Reset password error:', error);
-      // TODO: Show error message
     } finally {
       setIsLoading(false);
     }

@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   TrendingUp,
   FileText,
@@ -17,11 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const [userProfile, setUserProfile] = useState({
-    name: 'Sarah Johnson',
-    email: 'sarah@example.com',
-    avatar: 'S'
-  });
+  const { user } = useAuth();
 
   const [stats, setStats] = useState({
     totalContent: 156,
@@ -120,7 +117,7 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <h1 className="text-3xl font-bold text-text-light">Dashboard</h1>
-            <p className="text-text-muted mt-1">Welcome back, {userProfile.name}</p>
+            <p className="text-text-muted mt-1">Welcome back, {user?.username || user?.email || 'User'}</p>
           </div>
         </div>
       </div>
