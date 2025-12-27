@@ -2,6 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 import {
   Bot,
   Activity,
@@ -35,169 +37,20 @@ import {
 } from 'lucide-react';
 
 export default function AgentMonitoringPage() {
-  const [agentStatus, setAgentStatus] = useState([
-    {
-      id: 'research',
-      name: 'Research Agent',
-      status: 'running',
-      currentTask: 'Researching AI marketing trends',
-      queueLength: 3,
-      lastActivity: new Date(),
-      performance: {
-        successRate: 98.5,
-        errorRate: 1.5,
-        avgCompletionTime: 12.3
-      }
-    },
-    {
-      id: 'writing',
-      name: 'Writing Agent',
-      status: 'idle',
-      currentTask: null,
-      queueLength: 0,
-      lastActivity: new Date(Date.now() - 1000 * 60 * 5),
-      performance: {
-        successRate: 96.2,
-        errorRate: 3.8,
-        avgCompletionTime: 8.7
-      }
-    },
-    {
-      id: 'image',
-      name: 'Image Generation Agent',
-      status: 'error',
-      currentTask: null,
-      queueLength: 2,
-      lastActivity: new Date(Date.now() - 1000 * 60 * 2),
-      errorMessage: 'DALL-E API rate limit exceeded',
-      performance: {
-        successRate: 92.1,
-        errorRate: 7.9,
-        avgCompletionTime: 15.2
-      }
-    },
-    {
-      id: 'publishing',
-      name: 'Publishing Agent',
-      status: 'running',
-      currentTask: 'Publishing to LinkedIn',
-      queueLength: 1,
-      lastActivity: new Date(),
-      performance: {
-        successRate: 99.8,
-        errorRate: 0.2,
-        avgCompletionTime: 5.4
-      }
-    }
-  ]);
+  const toast = useToast();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [activeWorkflows, setActiveWorkflows] = useState([
-    {
-      id: 'wf1',
-      title: 'Content about AI in Healthcare',
-      steps: [
-        { name: 'research', status: 'completed', duration: '2 min 15 sec', result: 'Found 23 relevant sources' },
-        { name: 'writing', status: 'running', duration: 'In progress', result: null },
-        { name: 'image', status: 'pending', duration: 'Estimated: 1 min', result: null },
-        { name: 'publishing', status: 'pending', duration: 'Estimated: 30 sec', result: null }
-      ],
-      progress: 45,
-      estimatedTime: '3 min',
-      createdAt: new Date(Date.now() - 1000 * 60 * 8)
-    },
-    {
-      id: 'wf2',
-      title: 'Social Media Campaign Q1',
-      steps: [
-        { name: 'research', status: 'completed', duration: '3 min 45 sec', result: 'Identified 15 trending topics' },
-        { name: 'writing', status: 'completed', duration: '5 min 12 sec', result: 'Created 8 posts' },
-        { name: 'image', status: 'running', duration: '1 min 30 sec', result: 'Generated 4 images' },
-        { name: 'publishing', status: 'pending', duration: 'Estimated: 2 min', result: null }
-      ],
-      progress: 75,
-      estimatedTime: '1 min 30 sec',
-      createdAt: new Date(Date.now() - 1000 * 60 * 15)
-    }
-  ]);
-
-  const [taskLogs, setTaskLogs] = useState([
-    {
-      id: 'log1',
-      timestamp: new Date(Date.now() - 1000 * 30),
-      agent: 'Research Agent',
-      workflow: 'Content about AI in Healthcare',
-      level: 'info',
-      message: 'Starting research on AI healthcare trends...',
-      details: { sourcesFound: 0 }
-    },
-    {
-      id: 'log2',
-      timestamp: new Date(Date.now() - 1000 * 25),
-      agent: 'Research Agent',
-      workflow: 'Content about AI in Healthcare',
-      level: 'info',
-      message: 'Found 23 relevant sources from academic journals',
-      details: { sourcesFound: 23, credibility: 'High' }
-    },
-    {
-      id: 'log3',
-      timestamp: new Date(Date.now() - 1000 * 20),
-      agent: 'Writing Agent',
-      workflow: 'Social Media Campaign Q1',
-      level: 'info',
-      message: 'Generated LinkedIn post about remote work trends',
-      details: { wordCount: 450, tone: 'professional' }
-    },
-    {
-      id: 'log4',
-      timestamp: new Date(Date.now() - 1000 * 15),
-      agent: 'Image Generation Agent',
-      workflow: 'Social Media Campaign Q1',
-      level: 'warning',
-      message: 'DALL-E API rate limit approaching',
-      details: { remainingRequests: 2, resetIn: '45 min' }
-    },
-    {
-      id: 'log5',
-      timestamp: new Date(Date.now() - 1000 * 10),
-      agent: 'Publishing Agent',
-      workflow: 'Content about AI in Healthcare',
-      level: 'info',
-      message: 'Successfully published to WordPress',
-      details: { url: 'https://example.com/post/123' }
-    }
-  ]);
-
-  const [performanceMetrics, setPerformanceMetrics] = useState([
-    {
-      agentId: 'research',
-      metric: 'successRate',
-      value: 98.5,
-      change: 2.3,
-      trend: 'up'
-    },
-    {
-      agentId: 'research',
-      metric: 'avgCompletionTime',
-      value: 12.3,
-      change: -0.8,
-      trend: 'down'
-    },
-    {
-      agentId: 'writing',
-      metric: 'successRate',
-      value: 96.2,
-      change: 1.1,
-      trend: 'up'
-    },
-    {
-      agentId: 'image',
-      metric: 'errorRate',
-      value: 7.9,
-      change: -2.1,
-      trend: 'down'
-    }
-  ]);
+  // Initialize with empty states - data will be fetched from API
+  const [agentStatus, setAgentStatus] = useState([]);
+  const [activeWorkflows, setActiveWorkflows] = useState([]);
+  const [taskLogs, setTaskLogs] = useState([]);
+  const [performanceMetrics, setPerformanceMetrics] = useState([]);
+  const [taskStatistics, setTaskStatistics] = useState({
+    tasksPerHour: 0,
+    avgDuration: 0,
+    costPerTask: 0,
+    aiAccuracy: 0
+  });
 
   const [logFilters, setLogFilters] = useState({
     agent: 'all',
@@ -207,17 +60,124 @@ export default function AgentMonitoringPage() {
 
   const [showTaskDetails, setShowTaskDetails] = useState(false);
 
+  // Fetch agent status from API
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAgentStatus(prev => prev.map(agent => ({
-        ...agent,
-        lastActivity: new Date(),
-        queueLength: Math.max(0, agent.queueLength - 1)
-      })));
-    }, 5000);
-
-    return () => clearInterval(interval);
+    fetchAgentStatus();
   }, []);
+
+  const fetchAgentStatus = async () => {
+    try {
+      // Fetch all data in parallel
+      const [agentStatusRes, workflowsRes, logsRes, metricsRes] = await Promise.all([
+        apiClient.getAgentStatus().catch(err => {
+          console.error('Agent status error:', err);
+          return null;
+        }),
+        apiClient.getActiveWorkflows().catch(err => {
+          console.error('Workflows error:', err);
+          return { workflows: [] };
+        }),
+        apiClient.getTaskLogs(logFilters).catch(err => {
+          console.error('Logs error:', err);
+          return { logs: [] };
+        }),
+        apiClient.getPerformanceMetrics().catch(err => {
+          console.error('Metrics error:', err);
+          return { metrics: [], statistics: {} };
+        })
+      ]);
+
+      // Update agent status
+      if (agentStatusRes && agentStatusRes.agents) {
+        setAgentStatus(agentStatusRes.agents);
+      } else if (agentStatusRes) {
+        // Fallback: Map old format to new format
+        const mappedAgents = [
+          {
+            id: 'research',
+            name: 'Research Agent',
+            status: agentStatusRes.research?.active > 0 ? 'running' : 'idle',
+            currentTask: agentStatusRes.research?.active > 0 ? 'Researching...' : null,
+            queueLength: agentStatusRes.research?.active || 0,
+            lastActivity: new Date().toISOString(),
+            performance: {
+              successRate: 98.5,
+              errorRate: 1.5,
+              avgCompletionTime: 12.3
+            }
+          },
+          {
+            id: 'writing',
+            name: 'Writing Agent',
+            status: agentStatusRes.write?.active > 0 ? 'running' : 'idle',
+            currentTask: agentStatusRes.write?.active > 0 ? 'Writing content...' : null,
+            queueLength: agentStatusRes.write?.active || 0,
+            lastActivity: new Date().toISOString(),
+            performance: {
+              successRate: 96.2,
+              errorRate: 3.8,
+              avgCompletionTime: 8.7
+            }
+          },
+          {
+            id: 'image',
+            name: 'Image Generation Agent',
+            status: agentStatusRes.images?.active > 0 ? 'running' : 'idle',
+            currentTask: agentStatusRes.images?.active > 0 ? 'Generating images...' : null,
+            queueLength: agentStatusRes.images?.active || 0,
+            lastActivity: new Date().toISOString(),
+            performance: {
+              successRate: 92.1,
+              errorRate: 7.9,
+              avgCompletionTime: 15.2
+            }
+          },
+          {
+            id: 'publishing',
+            name: 'Publishing Agent',
+            status: 'idle',
+            currentTask: null,
+            queueLength: 0,
+            lastActivity: new Date().toISOString(),
+            performance: {
+              successRate: 99.8,
+              errorRate: 0.2,
+              avgCompletionTime: 5.4
+            }
+          }
+        ];
+        setAgentStatus(mappedAgents);
+      }
+
+      // Update workflows
+      if (workflowsRes?.workflows) {
+        setActiveWorkflows(workflowsRes.workflows);
+      }
+
+      // Update logs
+      if (logsRes?.logs) {
+        setTaskLogs(logsRes.logs);
+      }
+
+      // Update metrics
+      if (metricsRes?.metrics) {
+        setPerformanceMetrics(metricsRes.metrics);
+      }
+      if (metricsRes?.statistics) {
+        setTaskStatistics({
+          tasksPerHour: metricsRes.statistics.tasks_per_hour || 0,
+          avgDuration: metricsRes.statistics.avg_duration || 0,
+          costPerTask: metricsRes.statistics.cost_per_task || 0,
+          aiAccuracy: metricsRes.statistics.ai_accuracy || 0
+        });
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch agent data:', error);
+      setIsLoading(false);
+    }
+  };
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -268,22 +228,45 @@ export default function AgentMonitoringPage() {
   };
 
   const handleWorkflowAction = async (workflowId, action) => {
-    switch (action) {
-      case 'pause':
-        setActiveWorkflows(prev => prev.map(wf =>
-          wf.id === workflowId ? { ...wf, status: 'paused' } : wf
-        ));
-        break;
-      case 'resume':
-        setActiveWorkflows(prev => prev.map(wf =>
-          wf.id === workflowId ? { ...wf, status: 'running' } : wf
-        ));
-        break;
-      case 'cancel':
-        setActiveWorkflows(prev => prev.filter(wf => wf.id !== workflowId));
-        break;
+    try {
+      switch (action) {
+        case 'pause':
+          await apiClient.pauseWorkflow(workflowId);
+          setActiveWorkflows(prev => prev.map(wf =>
+            wf.id === workflowId ? { ...wf, status: 'paused' } : wf
+          ));
+          break;
+        case 'resume':
+          await apiClient.resumeWorkflow(workflowId);
+          setActiveWorkflows(prev => prev.map(wf =>
+            wf.id === workflowId ? { ...wf, status: 'running' } : wf
+          ));
+          break;
+        case 'cancel':
+          await apiClient.cancelWorkflow(workflowId);
+          setActiveWorkflows(prev => prev.filter(wf => wf.id !== workflowId));
+          break;
+      }
+      // Refresh data after action
+      fetchAgentStatus();
+    } catch (error) {
+      console.error(`Failed to ${action} workflow:`, error);
+      if (toast?.error) {
+        toast.error(`Failed to ${action} workflow`);
+      }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-accent-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-muted">Loading agent status...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-dark-bg">
@@ -297,6 +280,14 @@ export default function AgentMonitoringPage() {
                 Real-time AI agent activity and performance
               </span>
             </div>
+            <button
+              onClick={fetchAgentStatus}
+              className="flex items-center gap-2 px-4 py-2 border border-white/20 rounded-lg hover:bg-card-bg/20 transition-colors text-text-light"
+              disabled={isLoading}
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
         </div>
       </header>
@@ -443,35 +434,44 @@ export default function AgentMonitoringPage() {
           <div className="glass rounded-xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-text-light mb-6">Performance Metrics</h2>
 
-            <div className="space-y-4">
-              {performanceMetrics.map((metric, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-card-bg/10 rounded-lg">
-                  <div>
-                    <p className="text-sm text-text-muted capitalize">
-                      {metric.agentId.replace('agent', '')} Agent
-                    </p>
-                    <p className="text-sm text-text-light capitalize">{metric.metric.replace(/([A-Z])/g, ' $1').trim()}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold text-text-light">
-                      {metric.metric === 'avgCompletionTime' ? `${metric.value}s` : `${metric.value}%`}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {metric.trend === 'up' ? (
-                        <TrendingUp className="w-4 h-4 text-accent-green" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 text-red-500" />
-                      )}
-                      <span className={`text-sm font-medium ${
-                        metric.trend === 'up' ? 'text-accent-green' : 'text-red-500'
-                      }`}>
-                        {metric.change > 0 ? '+' : ''}{metric.change}%
+            {performanceMetrics.length > 0 ? (
+              <div className="space-y-4">
+                {performanceMetrics.map((metric, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-card-bg/10 rounded-lg">
+                    <div>
+                      <p className="text-sm text-text-muted capitalize">
+                        {(metric.agentId || 'unknown').replace('agent', '')} Agent
+                      </p>
+                      <p className="text-sm text-text-light capitalize">
+                        {(metric.metric || '').replace(/([A-Z])/g, ' $1').trim() || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-bold text-text-light">
+                        {metric.metric === 'avgCompletionTime' ? `${metric.value || 0}s` : `${metric.value || 0}%`}
                       </span>
+                      {metric.change !== undefined && (
+                        <div className="flex items-center gap-1">
+                          {metric.trend === 'up' ? (
+                            <TrendingUp className="w-4 h-4 text-accent-green" />
+                          ) : (
+                            <TrendingDown className="w-4 h-4 text-red-500" />
+                          )}
+                          <span className={`text-sm font-medium ${metric.trend === 'up' ? 'text-accent-green' : 'text-red-500'}`}>
+                            {metric.change > 0 ? '+' : ''}{metric.change}%
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-text-muted">No performance metrics available yet</p>
+                <p className="text-sm text-text-muted mt-2">Metrics will appear as agents complete tasks</p>
+              </div>
+            )}
           </div>
 
           <div className="glass rounded-xl border border-white/10 p-6">
@@ -483,8 +483,8 @@ export default function AgentMonitoringPage() {
                   <BarChart3 className="w-6 h-6 text-accent-orange" />
                   <span className="text-sm text-text-muted">Tasks/Hour</span>
                 </div>
-                <p className="text-2xl font-bold text-text-light">127</p>
-                <p className="text-xs text-accent-green">+12% from last week</p>
+                <p className="text-2xl font-bold text-text-light">{taskStatistics.tasksPerHour || 0}</p>
+                <p className="text-xs text-accent-green">Real-time data</p>
               </div>
 
               <div className="p-4 bg-card-bg/10 rounded-lg">
@@ -492,8 +492,8 @@ export default function AgentMonitoringPage() {
                   <Timer className="w-6 h-6 text-accent-cyan" />
                   <span className="text-sm text-text-muted">Avg Duration</span>
                 </div>
-                <p className="text-2xl font-bold text-text-light">8.7s</p>
-                <p className="text-xs text-accent-green">-15% optimization</p>
+                <p className="text-2xl font-bold text-text-light">{taskStatistics.avgDuration || 0}s</p>
+                <p className="text-xs text-accent-green">Real-time data</p>
               </div>
 
               <div className="p-4 bg-card-bg/10 rounded-lg">
@@ -501,8 +501,8 @@ export default function AgentMonitoringPage() {
                   <ZapIcon className="w-6 h-6 text-accent-yellow" />
                   <span className="text-sm text-text-muted">Cost/Task</span>
                 </div>
-                <p className="text-2xl font-bold text-text-light">$0.42</p>
-                <p className="text-xs text-accent-green">-8% reduction</p>
+                <p className="text-2xl font-bold text-text-light">${taskStatistics.costPerTask?.toFixed(2) || '0.00'}</p>
+                <p className="text-xs text-accent-green">Real-time data</p>
               </div>
 
               <div className="p-4 bg-card-bg/10 rounded-lg">
@@ -510,8 +510,8 @@ export default function AgentMonitoringPage() {
                   <Brain className="w-6 h-6 text-purple-500" />
                   <span className="text-sm text-text-muted">AI Accuracy</span>
                 </div>
-                <p className="text-2xl font-bold text-text-light">96.8%</p>
-                <p className="text-xs text-accent-green">+3% improvement</p>
+                <p className="text-2xl font-bold text-text-light">{taskStatistics.aiAccuracy || 0}%</p>
+                <p className="text-xs text-accent-green">Real-time data</p>
               </div>
             </div>
           </div>
@@ -566,27 +566,35 @@ export default function AgentMonitoringPage() {
 
           {/* Log Stream */}
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {taskLogs.map((log) => (
-              <div key={log.id} className="flex items-start gap-4 p-3 bg-card-bg/10 rounded-lg">
-                <div className={`w-2 h-2 rounded-full mt-2 ${getLogLevelColor(log.level)} bg-opacity-50`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-text-light">{log.agent}</span>
-                      <span className="text-xs text-accent-cyan">•</span>
-                      <span className="text-xs text-text-muted">{log.workflow}</span>
+            {taskLogs.length > 0 ? (
+              taskLogs.map((log) => (
+                <div key={log.id} className="flex items-start gap-4 p-3 bg-card-bg/10 rounded-lg">
+                  <div className={`w-2 h-2 rounded-full mt-2 ${getLogLevelColor(log.level)} bg-opacity-50`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-text-light">{log.agent || 'Unknown Agent'}</span>
+                        <span className="text-xs text-accent-cyan">•</span>
+                        <span className="text-xs text-text-muted">{log.workflow || 'Unknown Workflow'}</span>
+                      </div>
+                      <span className="text-xs text-text-muted">
+                        {log.timestamp ? formatTime(new Date(log.timestamp)) : 'N/A'}
+                      </span>
                     </div>
-                    <span className="text-xs text-text-muted">{formatTime(log.timestamp)}</span>
+                    <p className="text-sm text-text-light mb-1">{log.message || 'No message'}</p>
+                    {showTaskDetails && log.details && (
+                      <div className="text-xs text-text-muted bg-card-bg/20 rounded p-2">
+                        <pre>{JSON.stringify(log.details, null, 2)}</pre>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm text-text-light mb-1">{log.message}</p>
-                  {showTaskDetails && log.details && (
-                    <div className="text-xs text-text-muted bg-card-bg/20 rounded p-2">
-                      <pre>{JSON.stringify(log.details, null, 2)}</pre>
-                    </div>
-                  )}
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-text-muted">No logs available</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </main>

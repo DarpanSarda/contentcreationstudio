@@ -1,8 +1,8 @@
-// components/landing/HeroSection.tsx
+// components/landing/HeroSection.jsx
 'use client';
 
 import Link from 'next/link';
-import { Sparkles, Zap, Rocket } from 'lucide-react';
+import { Sparkles, Zap, Rocket, TrendingDown, Search, Palette, Target, BarChart3 } from 'lucide-react';
 
 export default function HeroSection() {
   return (
@@ -11,7 +11,7 @@ export default function HeroSection() {
       <div className="absolute inset-0">
         <div className="absolute top-20 right-20 w-96 h-96 bg-accent-orange/10 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-20 left-20 w-96 h-96 bg-accent-cyan/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent-yellow/5 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '4s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent-purple/5 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '4s' }} />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -19,98 +19,161 @@ export default function HeroSection() {
           {/* Left Content */}
           <div className="text-center lg:text-left">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 bg-accent-orange/10 border border-accent-orange/30 rounded-full px-4 py-2 mb-8">
-              <Sparkles className="w-4 h-4 text-accent-orange" />
-              <span className="text-sm font-medium text-accent-orange">AI-Powered Content Engine</span>
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-accent-cyan/10 to-accent-purple/10 border border-accent-cyan/30 rounded-full px-4 py-2 mb-8">
+              <Sparkles className="w-4 h-4 text-accent-cyan" />
+              <span className="text-sm font-medium text-accent-cyan">Multi-LLM AI Platform</span>
+              <span className="px-2 py-0.5 bg-green-500/20 text-green-500 text-xs rounded-full ml-2">
+                Save 80% with BYOK
+              </span>
             </div>
 
             {/* Main Heading */}
             <h1 className="text-5xl lg:text-7xl font-bold mb-6 leading-tight">
-              <span className="text-accent-orange">AI-Powered</span>
+              <span className="gradient-text">AI-Powered</span>
               <br />
               Content Creation
               <br />
-              <span className="gradient-text">On Autopilot</span>
+              <span className="text-accent-orange">10x Faster</span>
             </h1>
 
             {/* Subheading */}
-            <p className="text-xl text-text-muted mb-10 max-w-2xl">
-              Research, Write, and Publish content across all platforms in minutes, not hours.
-              Let AI agents handle the heavy lifting while you focus on strategy.
+            <p className="text-xl text-text-muted mb-8 max-w-2xl">
+              Research, write, and publish SEO-optimized content across all platforms with your brand voice.
+              Multi-LLM support with smart fallback. Use your own API keys and save 80%.
             </p>
+
+            {/* Feature Pills */}
+            <div className="flex flex-wrap gap-3 justify-center lg:justify-start mb-10">
+              <div className="flex items-center gap-2 bg-card-bg/40 border border-white/10 rounded-full px-4 py-2">
+                <Zap className="w-4 h-4 text-accent-yellow" />
+                <span className="text-sm font-medium">Multi-LLM Support</span>
+              </div>
+              <div className="flex items-center gap-2 bg-card-bg/40 border border-white/10 rounded-full px-4 py-2">
+                <Search className="w-4 h-4 text-accent-cyan" />
+                <span className="text-sm font-medium">Web Research</span>
+              </div>
+              <div className="flex items-center gap-2 bg-card-bg/40 border border-white/10 rounded-full px-4 py-2">
+                <Palette className="w-4 h-4 text-accent-purple" />
+                <span className="text-sm font-medium">Brand Voice</span>
+              </div>
+              <div className="flex items-center gap-2 bg-card-bg/40 border border-white/10 rounded-full px-4 py-2">
+                <Target className="w-4 h-4 text-accent-orange" />
+                <span className="text-sm font-medium">SEO Optimized</span>
+              </div>
+            </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
               <Link
                 href="/register"
-                className="group relative bg-accent-orange hover:bg-opacity-90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all hover:scale-105 hover:shadow-xl hover:shadow-accent-orange/30 flex items-center justify-center gap-2"
+                className="group relative bg-gradient-to-r from-accent-orange to-accent-yellow hover:opacity-90 text-dark-bg px-8 py-4 rounded-lg font-semibold text-lg transition-all hover:scale-105 hover:shadow-xl hover:shadow-accent-orange/30 flex items-center justify-center gap-2"
               >
                 <Rocket className="w-5 h-5" />
-                Start Creating Free
+                Start Free Trial
                 <Zap className="w-4 h-4 animate-pulse" />
               </Link>
               <Link
-                href="#demo"
+                href="/pricing"
                 className="group border-2 border-accent-cyan text-accent-cyan hover:bg-accent-cyan hover:text-dark-bg px-8 py-4 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2"
               >
-                Watch Demo
-                <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
+                <TrendingDown className="w-5 h-5" />
+                View Pricing
+                <span className="text-xs bg-green-500/20 text-green-500 px-2 py-0.5 rounded-full">Save 80%</span>
               </Link>
             </div>
 
             {/* Trust indicators */}
-            <p className="text-sm text-text-muted">
-              No credit card required • 14-day free trial • Cancel anytime
-            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4 text-sm text-text-muted">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span>No credit card required</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span>14-day free trial</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span>Cancel anytime</span>
+              </div>
+            </div>
           </div>
 
-          {/* Right Visual - Workflow Animation */}
+          {/* Right Visual - Feature Showcase */}
           <div className="hidden lg:block">
             <div className="relative w-full h-[600px]">
-              {/* Central workflow visualization */}
+              {/* Feature Cards Floating Animation */}
               <div className="absolute inset-0 flex items-center justify-center">
-                {/* Topic Input */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 animate-float">
-                  <div className="bg-card-bg/30 glass rounded-xl p-4 border border-accent-cyan/30">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-accent-cyan rounded-full animate-pulse" />
-                      <span className="text-sm font-medium">Topic Input</span>
+
+                {/* Multi-LLM Card */}
+                <div className="absolute top-0 left-0 animate-float">
+                  <div className="glass rounded-xl p-4 border border-accent-cyan/30 max-w-[200px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap className="w-5 h-5 text-accent-yellow" />
+                      <span className="text-sm font-bold">Multi-LLM</span>
+                    </div>
+                    <p className="text-xs text-text-muted">OpenAI, Anthropic, Google, DeepSeek</p>
+                    <div className="flex gap-1 mt-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
                     </div>
                   </div>
                 </div>
 
-                {/* Research Agent - Yellow Starburst */}
-                <div className="absolute top-32 left-20 animate-float" style={{ animationDelay: '1s' }}>
-                  <div className="relative">
-                    <StarburstIcon color="accent-yellow" />
-                    <div className="mt-4 text-center">
-                      <p className="text-xs font-bold tracking-wider text-accent-yellow">RESEARCH</p>
-                      <p className="text-xs text-text-muted">Gathering data</p>
+                {/* Web Research Card */}
+                <div className="absolute top-20 right-0 animate-float" style={{ animationDelay: '1s' }}>
+                  <div className="glass rounded-xl p-4 border border-accent-cyan/30 max-w-[200px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Search className="w-5 h-5 text-accent-cyan" />
+                      <span className="text-sm font-bold">Web Research</span>
+                    </div>
+                    <p className="text-xs text-text-muted">Real-time data from Brave, Tavily, Serper</p>
+                    <div className="mt-2 flex items-center gap-1">
+                      <BarChart3 className="w-3 h-3 text-accent-cyan" />
+                      <span className="text-xs text-accent-cyan">Live Data</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Writing Agent - Cyan Star */}
-                <div className="absolute top-32 right-20 animate-float" style={{ animationDelay: '2s' }}>
-                  <div className="relative">
-                    <StarIcon color="accent-cyan" />
-                    <div className="mt-4 text-center">
-                      <p className="text-xs font-bold tracking-wider text-accent-cyan">WRITING</p>
-                      <p className="text-xs text-text-muted">Creating content</p>
+                {/* Brand Voice Card */}
+                <div className="absolute bottom-32 left-10 animate-float" style={{ animationDelay: '2s' }}>
+                  <div className="glass rounded-xl p-4 border border-accent-purple/30 max-w-[200px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Palette className="w-5 h-5 text-accent-purple" />
+                      <span className="text-sm font-bold">Brand Voice</span>
+                    </div>
+                    <p className="text-xs text-text-muted">Consistent tone across all content</p>
+                    <div className="mt-2 text-xs text-accent-purple">Customizable</div>
+                  </div>
+                </div>
+
+                {/* SEO Optimization Card */}
+                <div className="absolute bottom-0 right-20 animate-float" style={{ animationDelay: '3s' }}>
+                  <div className="glass rounded-xl p-4 border border-accent-orange/30 max-w-[200px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="w-5 h-5 text-accent-orange" />
+                      <span className="text-sm font-bold">SEO Optimized</span>
+                    </div>
+                    <p className="text-xs text-text-muted">Rank higher on search engines</p>
+                    <div className="mt-2 flex items-center gap-1">
+                      <div className="text-xs text-green-500">↑ 300% Traffic</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Publishing Agent - Orange Circle */}
-                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 animate-float" style={{ animationDelay: '3s' }}>
-                  <div className="relative">
-                    <CircleIcon color="accent-orange" />
-                    <div className="mt-4 text-center">
-                      <p className="text-xs font-bold tracking-wider text-accent-orange">PUBLISHING</p>
-                      <p className="text-xs text-text-muted">Going live</p>
-                    </div>
+                {/* BYOK Savings Badge */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-float" style={{ animationDelay: '4s' }}>
+                  <div className="glass rounded-2xl p-6 border-2 border-green-500/30 text-center">
+                    <TrendingDown className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                    <div className="text-4xl font-bold text-green-500 mb-1">80%</div>
+                    <div className="text-sm text-text-muted">Savings with BYOK</div>
                   </div>
                 </div>
 
@@ -118,12 +181,12 @@ export default function HeroSection() {
                 <svg className="absolute inset-0 w-full h-full" style={{ zIndex: -1 }}>
                   <defs>
                     <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style={{ stopColor: '#FEE400', stopOpacity: 0.3 }} />
-                      <stop offset="100%" style={{ stopColor: '#00FFC8', stopOpacity: 0.3 }} />
+                      <stop offset="0%" style={{ stopColor: '#00FFC8', stopOpacity: 0.3 }} />
+                      <stop offset="100%" style={{ stopColor: '#FF652F', stopOpacity: 0.3 }} />
                     </linearGradient>
                   </defs>
                   <path
-                    d="M 300 100 Q 200 200, 250 350"
+                    d="M 100 100 Q 300 200, 400 300"
                     stroke="url(#gradient1)"
                     strokeWidth="2"
                     fill="none"
@@ -131,7 +194,7 @@ export default function HeroSection() {
                     className="animate-pulse"
                   />
                   <path
-                    d="M 400 100 Q 450 200, 350 350"
+                    d="M 500 150 Q 400 250, 300 350"
                     stroke="url(#gradient1)"
                     strokeWidth="2"
                     fill="none"
@@ -152,97 +215,5 @@ export default function HeroSection() {
         </svg>
       </div>
     </section>
-  );
-}
-
-// Icon Components matching Assiko style
-function StarburstIcon({ color }) {
-  const colorMap = {
-    'accent-yellow': '#FEE400',
-    'accent-cyan': '#00FFC8',
-    'accent-orange': '#FF652F',
-  };
-
-  return (
-    <div className="relative w-32 h-32">
-      <svg viewBox="0 0 120 120" className="w-full h-full">
-        {/* Central circle */}
-        <circle cx="60" cy="60" r="8" fill={colorMap[color]} className="animate-glow" />
-        {/* Radiating lines with dots */}
-        {[...Array(16)].map((_, i) => {
-          const angle = (i * 22.5 * Math.PI) / 180;
-          const x1 = 60 + 15 * Math.cos(angle);
-          const y1 = 60 + 15 * Math.sin(angle);
-          const x2 = 60 + 45 * Math.cos(angle);
-          const y2 = 60 + 45 * Math.sin(angle);
-          const x3 = 60 + 50 * Math.cos(angle);
-          const y3 = 60 + 50 * Math.sin(angle);
-
-          return (
-            <g key={i} opacity="0.9">
-              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={colorMap[color]} strokeWidth="2" />
-              <circle cx={x3} cy={y3} r="3" fill={colorMap[color]} />
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
-function StarIcon({ color }) {
-  const colorMap = {
-    'accent-yellow': '#FEE400',
-    'accent-cyan': '#00FFC8',
-    'accent-orange': '#FF652F',
-  };
-
-  return (
-    <div className="relative w-32 h-32">
-      <svg viewBox="0 0 100 100" className="w-full h-full">
-        <path
-          d="M 50 10 L 55 45 L 90 50 L 55 55 L 50 90 L 45 55 L 10 50 L 45 45 Z"
-          fill={colorMap[color]}
-          stroke={colorMap[color]}
-          strokeWidth="2"
-          className="animate-glow"
-        />
-      </svg>
-    </div>
-  );
-}
-
-function CircleIcon({ color }) {
-  const colorMap = {
-    'accent-yellow': '#FEE400',
-    'accent-cyan': '#00FFC8',
-    'accent-orange': '#FF652F',
-  };
-
-  return (
-    <div className="relative w-32 h-32">
-      <svg viewBox="0 0 100 100" className="w-full h-full">
-        {/* Central circle */}
-        <circle cx="50" cy="50" r="15" fill={colorMap[color]} className="animate-glow" />
-        {/* Outer circles */}
-        <circle cx="50" cy="20" r="8" fill={colorMap[color]} opacity="0.8" />
-        <circle cx="80" cy="50" r="8" fill={colorMap[color]} opacity="0.8" />
-        <circle cx="50" cy="80" r="8" fill={colorMap[color]} opacity="0.8" />
-        <circle cx="20" cy="50" r="8" fill={colorMap[color]} opacity="0.8" />
-        {/* Decorative spikes */}
-        {[...Array(16)].map((_, i) => (
-          <line
-            key={i}
-            x1="50"
-            y1="50"
-            x2={50 + 45 * Math.cos(i * Math.PI / 8)}
-            y2={50 + 45 * Math.sin(i * Math.PI / 8)}
-            stroke={colorMap[color]}
-            strokeWidth="1"
-            opacity="0.3"
-          />
-        ))}
-      </svg>
-    </div>
   );
 }

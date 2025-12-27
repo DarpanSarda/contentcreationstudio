@@ -38,21 +38,31 @@ class ErrorBoundary extends React.Component {
 
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105"
+              className="px-6 py-3 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105 mb-6"
             >
               Refresh Page
             </button>
 
-            {process.env.NODE_ENV === 'development' && (
-              <details className="mt-6 text-left">
-                <summary className="cursor-pointer text-accent-cyan hover:text-accent-cyan/80">
-                  Technical Details
+            {this.state.error && (
+              <p style={{ color: '#ef4444', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                {this.state.error.toString()}
+              </p>
+            )}
+
+            {this.state.errorInfo && (
+              <details style={{ whiteSpace: 'pre-wrap' }}>
+                <summary style={{ cursor: 'pointer', marginBottom: '0.5rem', color: '#06b6d4' }}>
+                  Click for error details
                 </summary>
-                <pre className="mt-2 p-4 bg-card-bg/20 rounded text-xs text-red-400 overflow-auto">
-                  {this.state.error && this.state.error.toString()}
-                  <br />
-                  <br />
-                  {this.state.errorInfo.componentStack}
+                <pre style={{
+                  background: '#1f2937',
+                  padding: '1rem',
+                  borderRadius: '0.5rem',
+                  overflow: 'auto',
+                  fontSize: '0.75rem',
+                  textAlign: 'left'
+                }}>
+                  {this.state.errorInfo?.componentStack || 'No component stack available'}
                 </pre>
               </details>
             )}

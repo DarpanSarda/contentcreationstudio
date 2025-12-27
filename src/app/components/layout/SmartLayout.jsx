@@ -17,7 +17,7 @@ export default function SmartLayout({ children }) {
   const isAuthPage = ['/login', '/register', '/reset-password'].includes(pathname);
 
   // Authenticated app pages - app navigation only
-  const isAppPage = ['/dashboard', '/content', '/research', '/publishing', '/analytics', '/agents', '/settings', '/help', '/support', '/about']
+  const isAppPage = ['/dashboard', '/content', '/research', '/publishing', '/analytics', '/agents', '/settings', '/help', '/support', '/about', '/notifications', '/pricing']
     .some(route => pathname.startsWith(route));
 
   // Landing page - landing navigation + footer

@@ -3,6 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import apiClient from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 import {
   Search,
   Filter,
@@ -12,405 +15,306 @@ import {
   Eye,
   Edit,
   Trash2,
-  Share2,
+  Copy,
   Calendar,
   MoreVertical,
   FileText,
-  Hash,
-  Target,
-  Image,
-  Mail,
-  TrendingUp,
-  Users,
+  CheckCircle,
+  Clock,
+  XCircle,
   ChevronDown,
-  X,
-  Check,
-  AlertCircle
+  RefreshCw,
+  Share2,
+  Mail,
+  BookOpen
 } from 'lucide-react';
 
+// Content type configuration
+const contentTypes = [
+  {
+    id: '',
+    label: 'Content',
+    icon: FileText,
+    color: 'accent-cyan',
+    bgColor: 'bg-accent-cyan/20',
+    textColor: 'text-accent-cyan',
+    borderColor: 'border-accent-cyan/30',
+    description: 'Blog posts, social media, emails, articles'
+  },
+  {
+    id: 'research',
+    label: 'Research',
+    icon: BookOpen,
+    color: 'purple-500',
+    bgColor: 'bg-purple-500/20',
+    textColor: 'text-purple-500',
+    borderColor: 'border-purple-500/30',
+    description: 'Research documents'
+  }
+];
+
 export default function ContentLibraryPage() {
+  const router = useRouter();
+  const toast = useToast();
+
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState('date');
+  const [content, setContent] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(''); // Default to "All Content"
+  const [pagination, setPagination] = useState({
+    total: 0,
+    limit: 20,
+    offset: 0,
+    has_more: false
+  });
+
   const [filters, setFilters] = useState({
-    status: 'all',
-    contentType: 'all',
-    platform: 'all',
-    dateRange: 'all'
+    status: '',
+    content_type: '', // Controlled by activeTab
+    my_content: true
   });
 
-  const [content, setContent] = useState([
-    {
-      id: '1',
-      title: '10 AI Tools That Will Transform Your Marketing in 2025',
-      excerpt: 'Discover the cutting-edge AI tools that are revolutionizing digital marketing strategies...',
-      type: 'Blog Post',
-      status: 'published',
-      platforms: ['WordPress', 'Medium'],
-      views: 1250,
-      shares: 45,
-      likes: 89,
-      created: '2024-01-15',
-      updated: '2024-01-15',
-      thumbnail: '/api/placeholder/400/250'
-    },
-    {
-      id: '2',
-      title: 'The Future of Remote Work: Trends and Predictions',
-      excerpt: 'As we navigate the new normal of remote work, several key trends are emerging...',
-      type: 'LinkedIn Post',
-      status: 'scheduled',
-      platforms: ['LinkedIn'],
-      scheduledFor: '2024-01-18',
-      created: '2024-01-14',
-      updated: '2024-01-14',
-      thumbnail: '/api/placeholder/400/250'
-    },
-    {
-      id: '3',
-      title: 'How to Build a Strong Brand Identity on Social Media',
-      excerpt: 'Building a memorable brand identity requires consistent messaging, visual elements...',
-      type: 'Twitter Thread',
-      status: 'draft',
-      platforms: ['Twitter'],
-      created: '2024-01-13',
-      updated: '2024-01-13',
-      thumbnail: '/api/placeholder/400/250'
-    },
-    {
-      id: '4',
-      title: 'Email Marketing Best Practices for Q1 2024',
-      excerpt: 'Start your year strong with these proven email marketing strategies that drive results...',
-      type: 'Email Newsletter',
-      status: 'published',
-      platforms: ['Email'],
-      views: 3420,
-      shares: 23,
-      likes: 156,
-      created: '2024-01-12',
-      updated: '2024-01-12',
-      thumbnail: '/api/placeholder/400/250'
-    },
-    {
-      id: '5',
-      title: 'Instagram Growth Hacks You Need to Try',
-      excerpt: 'Unlock the secrets to rapid Instagram growth with these actionable strategies...',
-      type: 'Instagram Caption',
-      status: 'published',
-      platforms: ['Instagram'],
-      views: 890,
-      shares: 67,
-      likes: 234,
-      created: '2024-01-11',
-      updated: '2024-01-11',
-      thumbnail: '/api/placeholder/400/250'
-    },
-    {
-      id: '6',
-      title: 'Facebook Marketing in 2024: What Works',
-      excerpt: 'Navigate the evolving landscape of Facebook marketing with these proven techniques...',
-      type: 'Facebook Post',
-      status: 'failed',
-      platforms: ['Facebook'],
-      created: '2024-01-10',
-      updated: '2024-01-10',
-      errorMessage: 'API rate limit exceeded',
-      thumbnail: '/api/placeholder/400/250'
-    }
-  ]);
+  const [stats, setStats] = useState({
+    total: 0,
+    draft: 0,
+    published: 0,
+    other: 0
+  });
 
-  const contentTypes = [
-    { value: 'all', label: 'All Types' },
-    { value: 'blog-post', label: 'Blog Post' },
-    { value: 'twitter-thread', label: 'Twitter Thread' },
-    { value: 'linkedin-post', label: 'LinkedIn Post' },
-    { value: 'instagram-caption', label: 'Instagram Caption' },
-    { value: 'facebook-post', label: 'Facebook Post' },
-    { value: 'email-newsletter', label: 'Email Newsletter' }
-  ];
+  const [contentTypeCounts, setContentTypeCounts] = useState({
+    '': 0,        // Content (all types except research)
+    'research': 0  // Research only
+  });
 
-  const statuses = [
-    { value: 'all', label: 'All Status' },
-    { value: 'published', label: 'Published' },
-    { value: 'scheduled', label: 'Scheduled' },
-    { value: 'draft', label: 'Draft' },
-    { value: 'failed', label: 'Failed' }
-  ];
+  // Fetch content on mount and when filters change
+  useEffect(() => {
+    fetchContent();
+    fetchStats();
+  }, [filters, pagination.offset]);
 
-  const platforms = [
-    { value: 'all', label: 'All Platforms' },
-    { value: 'wordpress', label: 'WordPress' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'twitter', label: 'Twitter' },
-    { value: 'linkedin', label: 'LinkedIn' },
-    { value: 'facebook', label: 'Facebook' },
-    { value: 'instagram', label: 'Instagram' }
-  ];
+  // Sync activeTab with filters
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, content_type: activeTab }));
+  }, [activeTab]);
 
-  const sortOptions = [
-    { value: 'date', label: 'Date Created' },
-    { value: 'updated', label: 'Last Updated' },
-    { value: 'title', label: 'Title' },
-    { value: 'views', label: 'Views' },
-    { value: 'engagement', label: 'Engagement' }
-  ];
+  const fetchContent = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.getAllContent({
+        ...filters,
+        limit: pagination.limit,
+        offset: pagination.offset
+      });
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'published': return 'bg-accent-green/20 text-accent-green border-accent-green/30';
-      case 'scheduled': return 'bg-accent-yellow/20 text-accent-yellow border-accent-yellow/30';
-      case 'draft': return 'bg-accent-cyan/20 text-accent-cyan border-accent-cyan/30';
-      case 'failed': return 'bg-red-500/20 text-red-500 border-red-500/30';
-      default: return 'bg-card-bg/20 text-text-muted border-white/20';
+      let filteredContent = response.content || [];
+
+      // If on Content tab (activeTab = ''), exclude research documents
+      // If on Research tab (activeTab = 'research'), show only research documents
+      if (activeTab === '') {
+        // Content tab: exclude research
+        filteredContent = filteredContent.filter(item => item.content_type !== 'research');
+      } else if (activeTab === 'research') {
+        // Research tab: only research
+        filteredContent = filteredContent.filter(item => item.content_type === 'research');
+      }
+
+      setContent(filteredContent);
+      setPagination(prev => ({
+        ...prev,
+        total: filteredContent.length,
+        has_more: response.pagination?.has_more || false
+      }));
+
+      // Update content type counts based on ALL content (before filtering)
+      updateContentTypeCounts(response.content || []);
+    } catch (error) {
+      console.error('Failed to fetch content:', error);
+      toast.error('Failed to load content');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getTypeIcon = (type) => {
-    const icons = {
-      'Blog Post': <FileText className="w-4 h-4" />,
-      'Twitter Thread': <Hash className="w-4 h-4" />,
-      'LinkedIn Post': <Target className="w-4 h-4" />,
-      'Instagram Caption': <Image className="w-4 h-4" />,
-      'Facebook Post': <FileText className="w-4 h-4" />,
-      'Email Newsletter': <Mail className="w-4 h-4" />
+  const updateContentTypeCounts = (contentList) => {
+    let researchCount = 0;
+    let contentCount = 0;
+
+    contentList.forEach(item => {
+      const type = item.content_type || 'article';
+      if (type === 'research') {
+        researchCount++;
+      } else {
+        // Everything else goes to Content tab (blog-post, social-media, email, article, etc.)
+        contentCount++;
+      }
+    });
+
+    setContentTypeCounts({
+      '': contentCount,
+      'research': researchCount
+    });
+  };
+
+  const fetchStats = async () => {
+    try {
+      const statsData = await apiClient.getContentStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      fetchContent();
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiClient.searchContent(searchQuery, filters.my_content);
+      setContent(response.results || []);
+    } catch (error) {
+      console.error('Search error:', error);
+      toast.error('Search failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (contentId) => {
+    if (!confirm('Are you sure you want to delete this content?')) return;
+
+    try {
+      await apiClient.deleteContent(contentId);
+      fetchContent();
+      fetchStats();
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+  };
+
+  const handleDuplicate = async (contentId) => {
+    try {
+      await apiClient.duplicateContent(contentId);
+      fetchContent();
+      fetchStats();
+    } catch (error) {
+      console.error('Duplicate error:', error);
+    }
+  };
+
+  const handleApprove = async (contentId) => {
+    try {
+      await apiClient.approveContent(contentId);
+      fetchContent();
+      fetchStats();
+    } catch (error) {
+      console.error('Approve error:', error);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      published: { bg: 'bg-green-500/20', text: 'text-green-500', icon: CheckCircle },
+      draft: { bg: 'bg-yellow-500/20', text: 'text-yellow-500', icon: Clock },
+      private: { bg: 'bg-gray-500/20', text: 'text-gray-500', icon: XCircle },
     };
-    return icons[type] || <FileText className="w-4 h-4" />;
-  };
 
-  const getPlatformIcon = (platform) => {
-    const icons = {
-      'WordPress': <span className="text-blue-400 text-xs font-bold">WP</span>,
-      'Medium': <span className="text-green-400 text-xs font-bold">M</span>,
-      'Twitter': <span className="text-cyan-400 text-xs font-bold">X</span>,
-      'LinkedIn': <span className="text-blue-600 text-xs font-bold">LI</span>,
-      'Facebook': <span className="text-blue-500 text-xs font-bold">FB</span>,
-      'Instagram': <span className="text-pink-500 text-xs font-bold">IG</span>,
-      'Email': <span className="text-accent-orange text-xs font-bold">@</span>
-    };
-    return icons[platform] || platform.charAt(0);
-  };
+    const config = statusConfig[status] || statusConfig.draft;
+    const Icon = config.icon;
 
-  const filteredContent = content.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filters.status === 'all' || item.status === filters.status;
-    const matchesType = filters.contentType === 'all' ||
-                        item.type.toLowerCase().replace(' ', '-') === filters.contentType;
-    const matchesPlatform = filters.platform === 'all' ||
-                           item.platforms.some(p => p.toLowerCase() === filters.platform);
-
-    return matchesSearch && matchesStatus && matchesType && matchesPlatform;
-  });
-
-  const sortedContent = [...filteredContent].sort((a, b) => {
-    switch (sortBy) {
-      case 'date':
-        return new Date(b.created) - new Date(a.created);
-      case 'updated':
-        return new Date(b.updated) - new Date(a.updated);
-      case 'title':
-        return a.title.localeCompare(b.title);
-      case 'views':
-        return (b.views || 0) - (a.views || 0);
-      case 'engagement':
-        return ((b.shares || 0) + (b.likes || 0)) - ((a.shares || 0) + (a.likes || 0));
-      default:
-        return 0;
-    }
-  });
-
-  const toggleSelection = (id) => {
-    setSelectedItems(prev =>
-      prev.includes(id)
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        <Icon className="w-3 h-3" />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
     );
   };
 
-  const selectAll = () => {
-    if (selectedItems.length === sortedContent.length) {
-      setSelectedItems([]);
-    } else {
-      setSelectedItems(sortedContent.map(item => item.id));
-    }
-  };
+  const getContentTypeBadge = (contentType) => {
+    // Define individual type badges
+    const typeBadges = {
+      'blog-post': { icon: FileText, label: 'Blog Post', bgColor: 'bg-orange-500/20', textColor: 'text-orange-500', borderColor: 'border-orange-500/30' },
+      'social-media': { icon: Share2, label: 'Social Media', bgColor: 'bg-cyan-500/20', textColor: 'text-cyan-500', borderColor: 'border-cyan-500/30' },
+      'email': { icon: Mail, label: 'Email', bgColor: 'bg-green-500/20', textColor: 'text-green-500', borderColor: 'border-green-500/30' },
+      'article': { icon: FileText, label: 'Article', bgColor: 'bg-yellow-500/20', textColor: 'text-yellow-500', borderColor: 'border-yellow-500/30' },
+      'research': { icon: BookOpen, label: 'Research', bgColor: 'bg-purple-500/20', textColor: 'text-purple-500', borderColor: 'border-purple-500/30' }
+    };
 
-  const bulkDelete = () => {
-    // TODO: Implement bulk delete
-    console.log('Bulk delete:', selectedItems);
-  };
+    const badge = typeBadges[contentType] || typeBadges['article'];
+    const Icon = badge.icon;
 
-  const bulkPublish = () => {
-    // TODO: Implement bulk publish
-    console.log('Bulk publish:', selectedItems);
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${badge.bgColor} ${badge.textColor} border ${badge.borderColor}`}>
+        <Icon className="w-3 h-3" />
+        {badge.label}
+      </span>
+    );
   };
 
   const ContentCard = ({ item }) => (
-    <div className={`glass rounded-xl border ${
-      selectedItems.includes(item.id) ? 'border-accent-cyan' : 'border-white/10'
-    } overflow-hidden hover:scale-[1.02] transition-all cursor-pointer group`}>
-      {/* Thumbnail */}
-      <div className="aspect-video bg-gradient-to-br from-accent-orange/20 to-accent-cyan/20 relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <FileText className="w-12 h-12 text-text-muted" />
-        </div>
-        <div className="absolute top-2 left-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.status)}`}>
-            {item.status}
-          </span>
-        </div>
-        <div className="absolute top-2 right-2">
-          <input
-            type="checkbox"
-            checked={selectedItems.includes(item.id)}
-            onChange={() => toggleSelection(item.id)}
-            className="w-4 h-4 rounded accent-accent-cyan"
-          />
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          {getTypeIcon(item.type)}
-          <span className="text-sm text-text-muted">{item.type}</span>
-        </div>
-
-        <h3 className="font-semibold text-text-light mb-2 line-clamp-2 group-hover:text-accent-cyan transition-colors">
-          {item.title}
-        </h3>
-
-        <p className="text-sm text-text-muted mb-3 line-clamp-2">
-          {item.excerpt}
-        </p>
-
-        {/* Platforms */}
-        <div className="flex items-center gap-2 mb-3">
-          {item.platforms.map((platform, idx) => (
-            <div
-              key={idx}
-              className="w-6 h-6 bg-card-bg/50 border border-white/20 rounded flex items-center justify-center"
-              title={platform}
-            >
-              {getPlatformIcon(platform)}
-            </div>
-          ))}
-        </div>
-
-        {/* Stats */}
-        {item.views && (
-          <div className="flex items-center gap-4 text-xs text-text-muted mb-3">
-            <div className="flex items-center gap-1">
-              <Eye className="w-3 h-3" />
-              {item.views.toLocaleString()}
-            </div>
-            <div className="flex items-center gap-1">
-              <Share2 className="w-3 h-3" />
-              {item.shares}
-            </div>
-            <div className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              {item.likes}
-            </div>
+    <div className="glass rounded-xl border border-white/10 overflow-hidden hover:border-accent-cyan/50 transition-all group relative">
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-text-light mb-2 group-hover:text-accent-cyan transition-colors line-clamp-2">
+              {item.title}
+            </h3>
+            <p className="text-sm text-text-muted line-clamp-2">{item.body?.substring(0, 100)}...</p>
           </div>
-        )}
+        </div>
 
-        {/* Actions */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-text-muted">{item.created}</span>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Link
-              href={`/content/${item.id}/edit`}
-              className="p-1.5 rounded hover:bg-card-bg/20 transition-colors"
+          <div className="flex items-center gap-2">
+            {getStatusBadge(item.status)}
+            {getContentTypeBadge(item.content_type || 'article')}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push(`/content/${item.id}/edit`)}
+              className="p-2 hover:bg-accent-cyan/20 rounded-lg transition-colors text-text-light hover:text-accent-cyan"
+              title="Edit"
             >
-              <Edit className="w-4 h-4 text-text-light" />
-            </Link>
-            <button className="p-1.5 rounded hover:bg-card-bg/20 transition-colors">
-              <MoreVertical className="w-4 h-4 text-text-light" />
+              <Edit className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => handleDuplicate(item.id)}
+              className="p-2 hover:bg-accent-orange/20 rounded-lg transition-colors text-text-light hover:text-accent-orange"
+              title="Duplicate"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => handleDelete(item.id)}
+              className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-text-light hover:text-red-500"
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Error Message */}
-        {item.status === 'failed' && item.errorMessage && (
-          <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded">
-            <p className="text-xs text-red-500">{item.errorMessage}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const ContentListItem = ({ item }) => (
-    <div className={`glass border ${
-      selectedItems.includes(item.id) ? 'border-accent-cyan' : 'border-white/10'
-    } rounded-lg p-4 hover:bg-card-bg/5 transition-all`}>
-      <div className="flex items-center gap-4">
-        {/* Checkbox */}
-        <input
-          type="checkbox"
-          checked={selectedItems.includes(item.id)}
-          onChange={() => toggleSelection(item.id)}
-          className="w-4 h-4 rounded accent-accent-cyan"
-        />
-
-        {/* Thumbnail */}
-        <div className="w-16 h-16 bg-gradient-to-br from-accent-orange/20 to-accent-cyan/20 rounded-lg flex items-center justify-center flex-shrink-0">
-          {getTypeIcon(item.type)}
-        </div>
-
-        {/* Content Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-text-light truncate">{item.title}</h3>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(item.status)}`}>
-              {item.status}
-            </span>
-          </div>
-          <p className="text-sm text-text-muted mb-2 line-clamp-1">{item.excerpt}</p>
-          <div className="flex items-center gap-4 text-xs text-text-muted">
-            <span>{item.type}</span>
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="flex items-center justify-between text-xs text-text-muted">
             <div className="flex items-center gap-1">
-              {item.platforms.map((platform, idx) => (
-                <div
-                  key={idx}
-                  className="w-5 h-5 bg-card-bg/50 border border-white/20 rounded flex items-center justify-center"
-                  title={platform}
-                >
-                  {getPlatformIcon(platform)}
-                </div>
-              ))}
+              <Calendar className="w-3 h-3" />
+              {new Date(item.created_at).toLocaleDateString()}
             </div>
-            {item.views && (
-              <>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <Eye className="w-3 h-3" />
-                  {item.views.toLocaleString()}
-                </div>
-              </>
-            )}
-            <span>•</span>
-            <span>{item.created}</span>
-          </div>
-          {item.status === 'failed' && item.errorMessage && (
-            <div className="mt-2 text-xs text-red-500">{item.errorMessage}</div>
-          )}
-        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/content/${item.id}/edit`}
-            className="p-2 rounded-lg hover:bg-card-bg/20 transition-colors"
-          >
-            <Edit className="w-4 h-4 text-text-light" />
-          </Link>
-          <button className="p-2 rounded-lg hover:bg-card-bg/20 transition-colors">
-            <MoreVertical className="w-4 h-4 text-text-light" />
-          </button>
+            {item.status === 'draft' && (
+              <button
+                onClick={() => handleApprove(item.id)}
+                className="text-accent-green hover:underline"
+              >
+                Publish
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -418,31 +322,83 @@ export default function ContentLibraryPage() {
 
   return (
     <div className="min-h-screen bg-dark-bg">
-      {/* Page Header */}
+      {/* Header */}
       <div className="bg-dark-bg border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-text-light">Content Library</h1>
-              <p className="text-text-muted mt-1">
-                {sortedContent.length} item{sortedContent.length !== 1 ? 's' : ''} total
-              </p>
+          <div className="py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-text-light">Content Library</h1>
+                <p className="text-text-muted mt-1">Manage and organize your content</p>
+              </div>
+
+              <Link
+                href="/content/new"
+                className="flex items-center gap-2 px-6 py-3 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105"
+              >
+                <Plus className="w-5 h-5" />
+                Create Content
+              </Link>
             </div>
-            <Link
-              href="/content/new"
-              className="flex items-center gap-2 px-4 py-2 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105 w-fit"
-            >
-              <Plus className="w-4 h-4" />
-              New Content
-            </Link>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+              <div className="glass rounded-lg p-4 border border-white/10">
+                <div className="text-2xl font-bold text-text-light">{stats.total}</div>
+                <div className="text-sm text-text-muted">Total Content</div>
+              </div>
+              <div className="glass rounded-lg p-4 border border-white/10">
+                <div className="text-2xl font-bold text-green-500">{stats.published}</div>
+                <div className="text-sm text-text-muted">Published</div>
+              </div>
+              <div className="glass rounded-lg p-4 border border-white/10">
+                <div className="text-2xl font-bold text-yellow-500">{stats.draft}</div>
+                <div className="text-sm text-text-muted">Drafts</div>
+              </div>
+              <div className="glass rounded-lg p-4 border border-white/10">
+                <div className="text-2xl font-bold text-accent-cyan">{stats.other}</div>
+                <div className="text-sm text-text-muted">Other</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search and Filters */}
+        {/* Content Type Tabs */}
+        <div className="mb-6">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {contentTypes.map((type) => {
+              const Icon = type.icon;
+              const isActive = activeTab === type.id;
+              const count = contentTypeCounts[type.id] || 0;
+
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => setActiveTab(type.id)}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${isActive
+                    ? `${type.bgColor} ${type.textColor} border-2 ${type.borderColor} shadow-lg`
+                    : 'bg-card-bg/20 text-text-muted border-2 border-transparent hover:bg-card-bg/40 hover:text-text-light'
+                    }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{type.label}</span>
+                  {count > 0 && (
+                    <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${isActive ? 'bg-white/20' : 'bg-white/10'
+                      }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Filters and Search */}
         <div className="glass rounded-xl border border-white/10 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1">
               <div className="relative">
@@ -451,200 +407,101 @@ export default function ContentLibraryPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search content by title, keywords..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Search content..."
                   className="w-full pl-10 pr-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light placeholder-text-muted transition-all"
                 />
               </div>
             </div>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-2 bg-card-bg/20 border border-white/20 rounded-lg p-1">
+            {/* Status Filter */}
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan text-text-light"
+            >
+              <option value="">All Status</option>
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+              <option value="private">Private</option>
+            </select>
+
+            {/* View Mode */}
+            <div className="flex items-center gap-2 p-1 bg-card-bg/20 border border-white/20 rounded-lg">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'grid' ? 'bg-accent-cyan text-dark-bg' : 'text-text-muted hover:text-text-light'
-                }`}
+                className={`p-2 rounded transition-colors ${viewMode === 'grid' ? 'bg-accent-cyan text-dark-bg' : 'text-text-light hover:bg-white/10'}`}
               >
-                <Grid3X3 className="w-4 h-4" />
+                <Grid3X3 className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'list' ? 'bg-accent-cyan text-dark-bg' : 'text-text-muted hover:text-text-light'
-                }`}
+                className={`p-2 rounded transition-colors ${viewMode === 'list' ? 'bg-accent-cyan text-dark-bg' : 'text-text-light hover:bg-white/10'}`}
               >
-                <List className="w-4 h-4" />
+                <List className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-4 py-3 border border-white/20 rounded-lg hover:bg-card-bg/20 transition-colors"
-              >
-                <Filter className="w-4 h-4" />
-                <span>Filters</span>
-                {(filters.status !== 'all' || filters.contentType !== 'all' ||
-                  filters.platform !== 'all') && (
-                  <span className="w-2 h-2 bg-accent-orange rounded-full"></span>
-                )}
-              </button>
-
-              {/* Sort */}
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none px-4 py-3 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all pr-10"
-                >
-                  {sortOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-              </div>
-            </div>
+            <button
+              onClick={fetchContent}
+              className="px-4 py-3 bg-accent-cyan/20 text-accent-cyan rounded-lg hover:bg-accent-cyan/30 transition-colors flex items-center gap-2"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
           </div>
-
-          {/* Expanded Filters */}
-          {showFilters && (
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-2">Status</label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full px-3 py-2 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
-                  >
-                    {statuses.map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-2">Content Type</label>
-                  <select
-                    value={filters.contentType}
-                    onChange={(e) => setFilters(prev => ({ ...prev, contentType: e.target.value }))}
-                    className="w-full px-3 py-2 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
-                  >
-                    {contentTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-2">Platform</label>
-                  <select
-                    value={filters.platform}
-                    onChange={(e) => setFilters(prev => ({ ...prev, platform: e.target.value }))}
-                    className="w-full px-3 py-2 bg-card-bg/20 border border-white/20 rounded-lg focus:ring-2 focus:ring-accent-cyan focus:border-transparent text-text-light transition-all"
-                  >
-                    {platforms.map((platform) => (
-                      <option key={platform.value} value={platform.value}>
-                        {platform.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-end">
-                  <button
-                    onClick={() => setFilters({ status: 'all', contentType: 'all', platform: 'all', dateRange: 'all' })}
-                    className="w-full px-3 py-2 border border-white/20 rounded-lg hover:bg-card-bg/20 transition-colors text-text-light"
-                  >
-                    Clear Filters
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Bulk Actions */}
-          {selectedItems.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.length === sortedContent.length}
-                    onChange={selectAll}
-                    className="w-4 h-4 rounded accent-accent-cyan"
-                  />
-                  <span className="text-sm text-text-light">
-                    {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={bulkPublish}
-                    className="px-4 py-2 bg-accent-green hover:bg-opacity-90 text-white rounded-lg font-medium transition-colors"
-                  >
-                    <Share2 className="w-4 h-4 inline mr-2" />
-                    Publish
-                  </button>
-                  <button
-                    onClick={bulkDelete}
-                    className="px-4 py-2 bg-red-500 hover:bg-opacity-90 text-white rounded-lg font-medium transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4 inline mr-2" />
-                    Delete
-                  </button>
-                  <button
-                    onClick={() => setSelectedItems([])}
-                    className="px-4 py-2 border border-white/20 rounded-lg hover:bg-card-bg/20 transition-colors text-text-light"
-                  >
-                    <X className="w-4 h-4 inline mr-2" />
-                    Clear
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Content Grid/List */}
-        {sortedContent.length === 0 ? (
-          <div className="glass rounded-xl border border-white/10 p-12 text-center">
-            <div className="w-16 h-16 bg-card-bg/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-8 h-8 text-text-muted" />
-            </div>
-            <h3 className="text-lg font-semibold text-text-light mb-2">No content found</h3>
-            <p className="text-text-muted mb-6">
-              {searchQuery ? 'Try adjusting your search terms' : 'Start by creating your first piece of content'}
-            </p>
-            {!searchQuery && (
-              <Link
-                href="/content/new"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105"
-              >
-                <Plus className="w-4 h-4" />
-                Create Content
-              </Link>
-            )}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-4 border-accent-orange border-t-transparent rounded-full animate-spin"></div>
+            <span className="ml-3 text-text-muted">Loading content...</span>
+          </div>
+        ) : content.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText className="w-16 h-16 text-text-muted mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-text-light mb-2">No content found</h3>
+            <p className="text-text-muted mb-6">Start creating your first content piece</p>
+            <Link
+              href="/content/new"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-accent-orange hover:bg-opacity-90 text-white rounded-lg font-medium transition-all hover:scale-105"
+            >
+              <Plus className="w-5 h-5" />
+              Create Content
+            </Link>
           </div>
         ) : (
-          <div className={viewMode === 'grid'
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-            : 'space-y-4'
-          }>
-            {sortedContent.map((item) => (
-              viewMode === 'grid' ? (
-                <ContentCard key={item.id} item={item} />
-              ) : (
-                <ContentListItem key={item.id} item={item} />
-              )
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+            {content.map((item) => (
+              <ContentCard key={item.id} item={item} />
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination.total > pagination.limit && (
+          <div className="flex items-center justify-between mt-8">
+            <div className="text-sm text-text-muted">
+              Showing {pagination.offset + 1} - {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPagination(prev => ({ ...prev, offset: Math.max(0, prev.offset - prev.limit) }))}
+                disabled={pagination.offset === 0}
+                className="px-4 py-2 border border-white/20 rounded-lg hover:bg-card-bg/20 transition-colors text-text-light disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+
+              <button
+                onClick={() => setPagination(prev => ({ ...prev, offset: prev.offset + prev.limit }))}
+                disabled={!pagination.has_more}
+                className="px-4 py-2 border border-white/20 rounded-lg hover:bg-card-bg/20 transition-colors text-text-light disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </main>

@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import SmartLayout from '@/app/components/layout/SmartLayout';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -15,9 +16,11 @@ export default function RootLayout({ children }) {
         <ErrorBoundary>
           <ToastProvider>
             <AuthProvider>
-              <SmartLayout>
-                {children}
-              </SmartLayout>
+              <NotificationProvider>
+                <SmartLayout>
+                  {children}
+                </SmartLayout>
+              </NotificationProvider>
             </AuthProvider>
           </ToastProvider>
         </ErrorBoundary>

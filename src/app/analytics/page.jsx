@@ -1,7 +1,8 @@
 // app/analytics/page.jsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import apiClient from '@/lib/api';
 import {
   TrendingUp,
   TrendingDown,
@@ -23,8 +24,27 @@ import {
   Globe,
   Zap,
   Award,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from 'recharts';
+
+// Chart colors
+const CHART_COLORS = ['#14F195', '#9945FF', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 
 export default function AnalyticsDashboardPage() {
   const [timeRange, setTimeRange] = useState('30');
@@ -32,134 +52,73 @@ export default function AnalyticsDashboardPage() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedMetric, setSelectedMetric] = useState('views');
   const [showCustomRange, setShowCustomRange] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [timeSeriesData, setTimeSeriesData] = useState([]);
 
-  const [topLevelMetrics, setTopLevelMetrics] = useState({
-    totalViews: 245678,
-    totalEngagement: 12456,
-    conversionRate: 3.8,
-    averageTimeOnPage: 245,
-    topPerformingPlatform: 'WordPress',
-    monthlyGrowth: 12.5
-  });
+  // Fetch analytics data on mount
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, []);
 
-  const [platformPerformance, setPlatformPerformance] = useState([
-    { platform: 'WordPress', views: 89234, engagement: 4567, conversions: 234, color: '#0073aa' },
-    { platform: 'Medium', views: 45123, engagement: 2341, conversions: 123, color: '#00ab6b' },
-    { platform: 'Twitter', views: 37891, engagement: 1987, conversions: 89, color: '#1da1f2' },
-    { platform: 'LinkedIn', views: 32145, engagement: 1876, conversions: 156, color: '#0077b5' },
-    { platform: 'Instagram', views: 28456, engagement: 1234, conversions: 67, color: '#e4405f' },
-    { platform: 'Facebook', views: 12829, engagement: 451, conversions: 34, color: '#1877f2' }
-  ]);
+  // Refetch time-series data when metric or time range changes
+  useEffect(() => {
+    const fetchTimeSeries = async () => {
+      try {
+        const timeSeries = await apiClient.getTimeSeriesAnalytics(
+          selectedMetric,
+          parseInt(timeRange) || 30
+        );
+        if (timeSeries && timeSeries.data) {
+          setTimeSeriesData(timeSeries.data);
+        } else {
+          setTimeSeriesData(generateSampleTimeSeriesData());
+        }
+      } catch (error) {
+        console.error('Failed to fetch time-series data:', error);
+        setTimeSeriesData(generateSampleTimeSeriesData());
+      }
+    };
 
-  const [contentTypePerformance, setContentTypePerformance] = useState([
-    { type: 'Blog Post', count: 45, views: 156789, engagement: 8934, percentage: 65 },
-    { type: 'Twitter Thread', count: 23, views: 45678, engagement: 2234, percentage: 19 },
-    { type: 'LinkedIn Post', count: 18, views: 34567, engagement: 1234, percentage: 12 },
-    { type: 'Instagram Caption', count: 12, views: 8644, engagement: 534, percentage: 4 }
-  ]);
-
-  const [performanceOverTime, setPerformanceOverTime] = useState([
-    { date: '2024-01-01', views: 4567, engagement: 234, conversions: 12 },
-    { date: '2024-01-02', views: 5234, engagement: 289, conversions: 15 },
-    { date: '2024-01-03', views: 4789, engagement: 267, conversions: 14 },
-    { date: '2024-01-04', views: 6123, engagement: 345, conversions: 18 },
-    { date: '2024-01-05', views: 5890, engagement: 312, conversions: 17 },
-    { date: '2024-01-06', views: 6456, engagement: 389, conversions: 21 },
-    { date: '2024-01-07', views: 7123, engagement: 423, conversions: 23 }
-  ]);
-
-  const [topContent, setTopContent] = useState([
-    {
-      id: '1',
-      title: '10 AI Tools That Will Transform Your Marketing in 2025',
-      type: 'Blog Post',
-      platforms: ['WordPress', 'Medium'],
-      views: 15678,
-      engagement: 892,
-      conversionRate: 5.8,
-      publishedDate: '2024-01-15'
-    },
-    {
-      id: '2',
-      title: 'The Future of Remote Work: Trends and Predictions',
-      type: 'LinkedIn Post',
-      platforms: ['LinkedIn'],
-      views: 12456,
-      engagement: 734,
-      conversionRate: 6.2,
-      publishedDate: '2024-01-18'
-    },
-    {
-      id: '3',
-      title: 'How to Build a Strong Brand Identity on Social Media',
-      type: 'Twitter Thread',
-      platforms: ['Twitter'],
-      views: 9876,
-      engagement: 567,
-      conversionRate: 4.9,
-      publishedDate: '2024-01-17'
-    },
-    {
-      id: '4',
-      title: 'Email Marketing Best Practices for Q1 2024',
-      type: 'Email Newsletter',
-      platforms: ['Email'],
-      views: 8234,
-      engagement: 445,
-      conversionRate: 12.3,
-      publishedDate: '2024-01-12'
-    },
-    {
-      id: '5',
-      title: 'Instagram Growth Hacks You Need to Try',
-      type: 'Instagram Caption',
-      platforms: ['Instagram'],
-      views: 7123,
-      engagement: 389,
-      conversionRate: 3.8,
-      publishedDate: '2024-01-11'
+    if (!loading) {
+      fetchTimeSeries();
     }
-  ]);
+  }, [selectedMetric, timeRange]);
 
-  const [underperformingContent, setUnderperformingContent] = useState([
-    {
-      id: '6',
-      title: 'Facebook Marketing in 2024: What Works',
-      type: 'Facebook Post',
-      platforms: ['Facebook'],
-      views: 2345,
-      engagement: 89,
-      conversionRate: 1.2,
-      publishedDate: '2024-01-10',
-      suggestion: 'Add more engaging visuals and interactive elements'
-    },
-    {
-      id: '7',
-      title: 'Content Marketing Automation Guide',
-      type: 'Blog Post',
-      platforms: ['WordPress'],
-      views: 3456,
-      engagement: 123,
-      conversionRate: 2.1,
-      publishedDate: '2024-01-09',
-      suggestion: 'Include more case studies and real-world examples'
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      const [overview, platformData, workflowData, recentActivity, timeSeries] = await Promise.all([
+        apiClient.getAnalyticsOverview(),
+        apiClient.getPlatformAnalytics(),
+        apiClient.getWorkflowAnalytics(20),
+        apiClient.getRecentActivity(10),
+        apiClient.getTimeSeriesAnalytics(selectedMetric, parseInt(timeRange) || 30).catch(err => {
+          console.error('Time-series data not available:', err);
+          return null;
+        })
+      ]);
+
+      setAnalyticsData({
+        overview,
+        platforms: platformData,
+        workflows: workflowData,
+        activities: recentActivity
+      });
+
+      // Set time-series data if available, otherwise use sample data
+      if (timeSeries && timeSeries.data) {
+        setTimeSeriesData(timeSeries.data);
+      } else {
+        setTimeSeriesData(generateSampleTimeSeriesData());
+      }
+    } catch (error) {
+      console.error('Failed to fetch analytics data:', error);
+      // Use sample data as fallback
+      setTimeSeriesData(generateSampleTimeSeriesData());
+    } finally {
+      setLoading(false);
     }
-  ]);
-
-  const [engagementMetrics, setEngagementMetrics] = useState({
-    averageEngagementRate: 5.1,
-    topEngagementHour: '14:00',
-    bestPublishingDay: 'Tuesday',
-    peakEngagementTime: 'Tuesday, 2:00 PM'
-  });
-
-  const getTrendIcon = (value, compareValue) => {
-    if (value > compareValue) {
-      return <ArrowUp className="w-4 h-4 text-accent-green" />;
-    } else if (value < compareValue) {
-      return <ArrowDown className="w-4 h-4 text-red-500" />;
-    }
-    return <div className="w-4 h-4 bg-accent-yellow rounded-full" />;
   };
 
   const formatNumber = (num) => {
@@ -180,17 +139,11 @@ export default function AnalyticsDashboardPage() {
     return icons[type] || <FileText className="w-4 h-4" />;
   };
 
-  const MetricCard = ({ title, value, unit, change, icon: Icon, color }) => (
+  const MetricCard = ({ title, value, unit, icon: Icon, color }) => (
     <div className="glass rounded-xl border border-white/10 p-6">
       <div className="flex items-center justify-between mb-4">
         <div className={`w-12 h-12 ${color} rounded-lg flex items-center justify-center`}>
           <Icon className="w-6 h-6 text-white" />
-        </div>
-        <div className="flex items-center gap-1">
-          {getTrendIcon(change, 0)}
-          <span className={`text-sm font-medium ${change > 0 ? 'text-accent-green' : change < 0 ? 'text-red-500' : 'text-accent-yellow'}`}>
-            {change > 0 ? '+' : ''}{change}%
-          </span>
         </div>
       </div>
       <div className="space-y-1">
@@ -202,6 +155,80 @@ export default function AnalyticsDashboardPage() {
       </div>
     </div>
   );
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-accent-cyan animate-spin mx-auto mb-4" />
+          <p className="text-text-light">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Extract data from API response
+  const contentStats = analyticsData?.overview?.stats?.content || {};
+  const workflowStats = analyticsData?.overview?.stats?.workflows || {};
+  const publishingStats = analyticsData?.overview?.stats?.publishing || {};
+  const platformsData = analyticsData?.platforms?.platforms || {};
+  const workflowsList = analyticsData?.workflows?.workflows || [];
+  const recentActivities = analyticsData?.activities?.activities || [];
+
+  // Transform platforms data for display
+  const platformPerformance = Object.keys(platformsData).length > 0
+    ? Object.entries(platformsData).map(([name, data]) => {
+      const colors = {
+        'wordpress': '#0073aa',
+        'medium': '#00ab6b',
+        'twitter': '#1da1f2',
+        'linkedin': '#0077b5',
+        'instagram': '#e4405f',
+        'facebook': '#1877f2'
+      };
+      return {
+        platform: name,
+        views: data.total_publications || 0,
+        engagement: data.successful || 0,
+        conversions: 0,
+        color: colors[name.toLowerCase()] || '#FF652F'
+      };
+    })
+    : [];
+
+  // Transform content by type
+  const contentByType = contentStats.by_type || {};
+  const totalContentCount = Object.values(contentByType).reduce((a, b) => a + b, 0);
+  const contentTypePerformance = Object.entries(contentByType).map(([type, count]) => ({
+    type: type,
+    count: count,
+    views: 0,
+    engagement: 0,
+    percentage: totalContentCount > 0 ? Math.round((count / totalContentCount) * 100) : 0
+  }));
+
+  // Generate sample time series data (fallback when API is not available)
+  const generateSampleTimeSeriesData = () => {
+    const days = parseInt(timeRange) || 30;
+    const data = [];
+    const today = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+
+      // Generate sample data - in production, this would come from the API
+      data.push({
+        date: dateStr,
+        views: Math.floor(Math.random() * 5000) + 1000,
+        engagement: Math.floor(Math.random() * 1000) + 200,
+      });
+    }
+
+    return data;
+  };
 
   return (
     <div className="min-h-screen bg-dark-bg">
@@ -262,48 +289,39 @@ export default function AnalyticsDashboardPage() {
         {/* Top-Level Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
           <MetricCard
-            title="Total Views"
-            value={topLevelMetrics.totalViews}
-            change={topLevelMetrics.monthlyGrowth}
-            icon={Eye}
+            title="Total Content"
+            value={contentStats.total || 0}
+            icon={FileText}
             color="bg-accent-orange/20"
           />
           <MetricCard
-            title="Total Engagement"
-            value={topLevelMetrics.totalEngagement}
-            change={8.2}
+            title="Published"
+            value={contentStats.published || 0}
             icon={Share2}
-            color="bg-accent-cyan/20"
-          />
-          <MetricCard
-            title="Conversion Rate"
-            value={topLevelMetrics.conversionRate}
-            unit="%"
-            change={1.5}
-            icon={Target}
             color="bg-accent-green/20"
           />
           <MetricCard
-            title="Avg. Time on Page"
-            value={Math.round(topLevelMetrics.averageTimeOnPage / 60)}
-            unit="min"
-            change={-2.1}
+            title="Drafts"
+            value={contentStats.drafts || 0}
             icon={Clock}
+            color="bg-accent-cyan/20"
+          />
+          <MetricCard
+            title="Scheduled"
+            value={contentStats.scheduled || 0}
+            icon={Calendar}
             color="bg-accent-yellow/20"
           />
           <MetricCard
-            title="Top Platform"
-            value={topLevelMetrics.topPerformingPlatform}
-            change={5.7}
-            icon={Globe}
+            title="Total Workflows"
+            value={workflowStats.total || 0}
+            icon={Activity}
             color="bg-purple-500/20"
           />
           <MetricCard
-            title="Monthly Growth"
-            value={topLevelMetrics.monthlyGrowth}
-            unit="%"
-            change={2.3}
-            icon={TrendingUp}
+            title="Publications"
+            value={publishingStats.total_publications || 0}
+            icon={Globe}
             color="bg-pink-500/20"
           />
         </div>
@@ -317,32 +335,62 @@ export default function AnalyticsDashboardPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedMetric('views')}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    selectedMetric === 'views' ? 'bg-accent-cyan text-dark-bg' : 'text-text-muted hover:text-text-light'
-                  }`}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${selectedMetric === 'views' ? 'bg-accent-cyan text-dark-bg' : 'text-text-muted hover:text-text-light'
+                    }`}
                 >
                   Views
                 </button>
                 <button
                   onClick={() => setSelectedMetric('engagement')}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    selectedMetric === 'engagement' ? 'bg-accent-cyan text-dark-bg' : 'text-text-muted hover:text-text-light'
-                  }`}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${selectedMetric === 'engagement' ? 'bg-accent-cyan text-dark-bg' : 'text-text-muted hover:text-text-light'
+                    }`}
                 >
                   Engagement
                 </button>
               </div>
             </div>
 
-            {/* Chart Placeholder */}
-            <div className="h-64 bg-card-bg/10 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <BarChart3 className="w-12 h-12 text-text-muted mx-auto mb-2" />
-                <p className="text-text-muted">Performance Chart</p>
-                <p className="text-sm text-text-muted mt-1">
-                  {selectedMetric === 'views' ? 'Daily views across all platforms' : 'Daily engagement across all platforms'}
-                </p>
-              </div>
+            {/* Performance Chart */}
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={timeSeriesData}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#14F195" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#14F195" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9CA3AF"
+                    style={{ fontSize: '12px' }}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    style={{ fontSize: '12px' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px',
+                      color: '#F3F4F6'
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey={selectedMetric}
+                    stroke="#14F195"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorMetric)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -350,25 +398,33 @@ export default function AnalyticsDashboardPage() {
           <div className="glass rounded-xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-text-light mb-6">Platform Comparison</h2>
 
-            <div className="space-y-4">
-              {platformPerformance.map((platform) => (
-                <div key={platform.platform} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-text-light">{platform.platform}</span>
-                    <span className="text-sm text-accent-cyan">{formatNumber(platform.views)}</span>
+            {platformPerformance.length > 0 ? (
+              <div className="space-y-4">
+                {platformPerformance.map((platform) => (
+                  <div key={platform.platform} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-text-light">{platform.platform}</span>
+                      <span className="text-sm text-accent-cyan">{formatNumber(platform.views)}</span>
+                    </div>
+                    <div className="w-full bg-card-bg/50 rounded-full h-2">
+                      <div
+                        className="h-2 rounded-full transition-all"
+                        style={{
+                          width: `${(platform.views / Math.max(...platformPerformance.map(p => p.views))) * 100}%`,
+                          backgroundColor: platform.color
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-card-bg/50 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full transition-all"
-                      style={{
-                        width: `${(platform.views / Math.max(...platformPerformance.map(p => p.views))) * 100}%`,
-                        backgroundColor: platform.color
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Globe className="w-12 h-12 text-text-muted mx-auto mb-3 opacity-50" />
+                <p className="text-text-muted">No platform data available</p>
+                <p className="text-sm text-text-muted mt-2">Connect platforms in Settings to see analytics</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -377,13 +433,44 @@ export default function AnalyticsDashboardPage() {
           <div className="glass rounded-xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-text-light mb-6">Content Type Performance</h2>
 
-            {/* Pie Chart Placeholder */}
-            <div className="h-48 bg-card-bg/10 rounded-lg flex items-center justify-center mb-4">
-              <div className="text-center">
-                <PieChart className="w-12 h-12 text-text-muted mx-auto mb-2" />
-                <p className="text-text-muted">Content Distribution</p>
+            {/* Pie Chart */}
+            {contentTypePerformance.length > 0 ? (
+              <div className="h-48 mb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={contentTypePerformance}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ percentage }) => `${percentage}%`}
+                      outerRadius={70}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {contentTypePerformance.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1F2937',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        color: '#F3F4F6'
+                      }}
+                    />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
               </div>
-            </div>
+            ) : (
+              <div className="h-48 bg-card-bg/10 rounded-lg flex items-center justify-center mb-4">
+                <div className="text-center">
+                  <PieChart className="w-12 h-12 text-text-muted mx-auto mb-2" />
+                  <p className="text-text-muted">No content data available</p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               {contentTypePerformance.map((type) => (
@@ -401,125 +488,145 @@ export default function AnalyticsDashboardPage() {
             </div>
           </div>
 
-          {/* Engagement Rate */}
+          {/* Workflow Statistics */}
           <div className="glass rounded-xl border border-white/10 p-6">
-            <h2 className="text-xl font-bold text-text-light mb-6">Engagement Insights</h2>
+            <h2 className="text-xl font-bold text-text-light mb-6">Workflow Statistics</h2>
 
             <div className="space-y-6">
               <div className="p-4 bg-accent-green/20 border border-accent-green/30 rounded-lg">
                 <div className="flex items-center gap-3">
                   <Award className="w-8 h-8 text-accent-green" />
                   <div>
-                    <p className="text-lg font-bold text-text-light">{engagementMetrics.averageEngagementRate}%</p>
-                    <p className="text-sm text-text-muted">Average Engagement Rate</p>
+                    <p className="text-lg font-bold text-text-light">{workflowStats.completed || 0}</p>
+                    <p className="text-sm text-text-muted">Completed Workflows</p>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-card-bg/10 rounded-lg">
-                  <p className="text-sm text-text-muted mb-1">Peak Engagement</p>
-                  <p className="text-lg font-bold text-text-light">{engagementMetrics.peakEngagementTime}</p>
+                  <p className="text-sm text-text-muted mb-1">Running</p>
+                  <p className="text-lg font-bold text-text-light">{workflowStats.running || 0}</p>
                 </div>
                 <div className="p-4 bg-card-bg/10 rounded-lg">
-                  <p className="text-sm text-text-muted mb-1">Best Day</p>
-                  <p className="text-lg font-bold text-text-light">{engagementMetrics.bestPublishingDay}</p>
+                  <p className="text-sm text-text-muted mb-1">Failed</p>
+                  <p className="text-lg font-bold text-text-light">{workflowStats.failed || 0}</p>
                 </div>
+              </div>
+
+              <div className="p-4 bg-card-bg/10 rounded-lg">
+                <p className="text-sm text-text-muted mb-1">Success Rate</p>
+                <p className="text-lg font-bold text-text-light">
+                  {workflowStats.total > 0
+                    ? Math.round((workflowStats.completed / workflowStats.total) * 100)
+                    : 0}%
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Top Content Table */}
+        {/* Recent Workflows */}
         <div className="glass rounded-xl border border-white/10 p-6">
-          <h2 className="text-xl font-bold text-text-light mb-6">Top Performing Content</h2>
+          <h2 className="text-xl font-bold text-text-light mb-6">Recent Workflows</h2>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-text-light">Content</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-text-light">Type</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-text-light">Platforms</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-text-light">Views</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-text-light">Engagement</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-text-light">Conversion</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-text-light">Topic</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-text-light">Status</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-text-light">Current Stage</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-text-light">Duration</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-text-light">Started</th>
                 </tr>
               </thead>
               <tbody>
-                {topContent.map((content, index) => (
-                  <tr key={content.id} className="border-b border-white/10 hover:bg-card-bg/10 transition-colors">
+                {workflowsList.slice(0, 10).map((workflow) => (
+                  <tr key={workflow.workflow_id} className="border-b border-white/10 hover:bg-card-bg/10 transition-colors">
                     <td className="py-3 px-4">
-                      <div>
-                        <p className="text-sm font-medium text-text-light line-clamp-1">{content.title}</p>
-                        <p className="text-xs text-text-muted">{content.publishedDate}</p>
-                      </div>
+                      <p className="text-sm font-medium text-text-light line-clamp-1">{workflow.topic}</p>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        {getTypeIcon(content.type)}
-                        <span className="text-sm text-text-light">{content.type}</span>
-                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${workflow.status === 'completed' ? 'bg-accent-green/20 text-accent-green border-accent-green/30' :
+                        workflow.status === 'failed' ? 'bg-red-500/20 text-red-500 border-red-500/30' :
+                          workflow.status === 'running' ? 'bg-accent-cyan/20 text-accent-cyan border-accent-cyan/30' :
+                            'bg-card-bg/20 text-text-muted border-white/20'
+                        }`}>
+                        {workflow.status}
+                      </span>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-1">
-                        {content.platforms.map((platform, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 bg-card-bg/50 border border-white/20 rounded text-xs text-text-light"
-                          >
-                            {platform}
-                          </span>
-                        ))}
-                      </div>
+                      <span className="text-sm text-text-light capitalize">{workflow.current_stage || 'N/A'}</span>
                     </td>
                     <td className="py-3 px-4 text-right text-sm text-text-light">
-                      {formatNumber(content.views)}
+                      {workflow.duration_minutes ? `${workflow.duration_minutes} min` : 'In progress'}
                     </td>
-                    <td className="py-3 px-4 text-right text-sm text-text-light">
-                      {formatNumber(content.engagement)}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className="text-sm font-medium text-accent-green">{content.conversionRate}%</span>
+                    <td className="py-3 px-4 text-right text-sm text-text-muted">
+                      {new Date(workflow.started_at).toLocaleDateString()}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {workflowsList.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-text-muted">No workflows yet</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Underperforming Content */}
+        {/* Recent Activity */}
         <div className="glass rounded-xl border border-white/10 p-6 mt-8">
-          <h2 className="text-xl font-bold text-text-light mb-6">Content Optimization Opportunities</h2>
+          <h2 className="text-xl font-bold text-text-light mb-6">Recent Activity</h2>
 
           <div className="space-y-4">
-            {underperformingContent.map((content) => (
-              <div key={content.id} className="flex items-start gap-4 p-4 bg-card-bg/10 border border-white/10 rounded-lg">
-                <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="w-5 h-5 text-red-500" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-medium text-text-light mb-1">{content.title}</h3>
-                      <div className="flex items-center gap-4 text-sm text-text-muted">
-                        <span>{content.type}</span>
-                        <span>•</span>
-                        <span>{formatNumber(content.views)} views</span>
-                        <span>•</span>
-                        <span className="text-red-500">{content.conversionRate}% conversion</span>
-                      </div>
+            {recentActivities.length > 0 ? (
+              recentActivities.map((activity, index) => (
+                <div key={index} className="flex items-start gap-4 p-4 bg-card-bg/10 border border-white/10 rounded-lg">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${activity.type === 'content_created' ? 'bg-accent-green/20' : 'bg-accent-cyan/20'
+                    }`}>
+                    {activity.type === 'content_created' ? (
+                      <FileText className="w-5 h-5 text-accent-green" />
+                    ) : (
+                      <Globe className="w-5 h-5 text-accent-cyan" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-text-light mb-1">
+                      {activity.type === 'content_created' ? activity.title : activity.content_title}
+                    </h3>
+                    <div className="flex items-center gap-4 text-sm text-text-muted">
+                      {activity.type === 'content_created' ? (
+                        <>
+                          <span>{activity.content_type}</span>
+                          <span>•</span>
+                          <span className={`${activity.status === 'published' ? 'text-accent-green' :
+                            activity.status === 'scheduled' ? 'text-accent-yellow' :
+                              'text-accent-cyan'
+                            }`}>{activity.status}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Published to {activity.platform}</span>
+                          <span>•</span>
+                          <span className={activity.status === 'success' ? 'text-accent-green' : 'text-red-500'}>
+                            {activity.status}
+                          </span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <span>{new Date(activity.timestamp).toLocaleString()}</span>
                     </div>
                   </div>
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2">
-                    <p className="text-xs text-yellow-500">
-                      <strong>Suggestion:</strong> {content.suggestion}
-                    </p>
-                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-text-muted">No recent activity</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </main>
